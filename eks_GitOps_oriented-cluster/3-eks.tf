@@ -153,18 +153,6 @@ resource "aws_security_group_rule" "dns_egress" {
   cidr_blocks = ["0.0.0.0/0"]
 }
 
-# Egress rule for SSH
-resource "aws_security_group_rule" "ssh_egress" {
-  security_group_id = module.eks.eks_cluster_managed_security_group_id
-  description       = "Egress rule for SSH"
-
-  type        = "egress"
-  from_port   = 22
-  to_port     = 22
-  protocol    = "tcp"
-  cidr_blocks = ["0.0.0.0/0"]
-}
-
 # Egress rule for service ports - port range: 1024-65535
 ## CAUTION: Make sure service ports are within this range or add a rule for it
 resource "aws_security_group_rule" "service_egress" {
