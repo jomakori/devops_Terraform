@@ -1,0 +1,880 @@
+version: 2.1
+orbs:
+  aws-cli: circleci/aws-cli@3.1.1
+  infracost: infracost/infracost@0.8.4
+
+parameters:
+  # A parameter per workspace
+  api-gateway:
+    type: boolean
+    default: false
+  cloudfront:
+    type: boolean
+    default: false
+  cloudwatch:
+    type: boolean
+    default: false
+  cluster-1-eksctl:
+    type: boolean
+    default: false
+  dynamodb:
+    type: boolean
+    default: false
+  ec2:
+    type: boolean
+    default: false
+  ecr:
+    type: boolean
+    default: false
+  efs:
+    type: boolean
+    default: false
+  elasticache:
+    type: boolean
+    default: false
+  iam:
+    type: boolean
+    default: false
+  kinesis:
+    type: boolean
+    default: false
+  lambda:
+    type: boolean
+    default: false
+  rc-production:
+    type: boolean
+    default: false
+  rds:
+    type: boolean
+    default: false
+  route53:
+    type: boolean
+    default: false
+  s3:
+    type: boolean
+    default: false
+  sqs:
+    type: boolean
+    default: false
+  vpc:
+    type: boolean
+    default: false
+  vpc_endpoints:
+    type: boolean
+    default: false
+  user_access_control_prod:
+    type: boolean
+    default: false
+
+executors:
+  devops-pipeline-image:
+    docker:
+    - image: $PIPELINE_IMAGE
+      aws_auth:
+        aws_access_key_id: $AWS_ACCESS_KEY_ID
+        aws_secret_access_key: $AWS_SECRET_ACCESS_KEY
+jobs:
+  test-run_plan:
+    parameters:
+      workspace_name:
+        type: string
+    executor: devops-pipeline-image
+    working_directory: ~/project/<< parameters.workspace_name >>
+    steps:
+    - checkout:
+        name: Checkout git workspace
+        path: ~/project
+        at: ~/project
+    - run:
+        name: Terraform Cloud - pass token
+        command: |
+          echo "credentials \"app.terraform.io\" {token =
+          \"$TERRAFORM_TOKEN\"}" > $HOME/.terraformrc
+    - run:
+        name: Terraform - Validate Templates
+        command: |
+          terraform init
+          terraform fmt
+          terraform validate
+    - run:
+        name: Checkov - Running static code analysis check
+        command: |
+          checkov --directory . --soft-fail-on true --config-file ~/project/.checkov.yaml
+    - run:
+        name: Terraform - Plan/Verify changes to infrastructure
+        command: |
+          terraform plan -out=plan.out -no-color 2>&1 | tee tf-plan.txt
+          tail -n 130 tf-plan.txt | sponge tf-plan.txt
+          dos2unix tf-plan.txt
+    - run:
+        name: GitHub Bot - Post plan results to PR
+        command: |-
+          export CIRCLE_PR_NUMBER=${CIRCLE_PR_NUMBER:-${CIRCLE_PULL_REQUEST##*/}}
+          if [ -z $CIRCLE_PR_NUMBER ]; then echo "Not a pull request - aborting"; exit 0; fi
+          cat tf-plan.txt | github-commenter \
+            -owner ${CIRCLE_PROJECT_USERNAME} \
+            -repo ${CIRCLE_PROJECT_REPONAME} \
+            -number $CIRCLE_PR_NUMBER \
+            -delete-comment-regex "$Proposed changes for Terraform Apply job" \
+            -type pr \
+            -format "<h2>🤔 Proposed changes for Terraform Apply job:</h2>
+                      <details>
+                          <summary><strong>Click here for more details</strong></summary>
+                          <pre><code>{{.}}</code></pre>
+                      </details>
+                    <h4><a href="$CIRCLE_BUILD_URL">Note: Access Full Results here</a></h4>
+                    <h3><a href="https://app.circleci.com/pipelines/github/richcontext/devops" target="_blank">Approve the changes</a></h3>"
+    - persist_to_workspace:
+        root: ~/project
+        paths:
+        - .
+  infracost:
+    parameters:
+      workspace_name:
+        type: string
+    executor: devops-pipeline-image
+    working_directory: ~/project/<< parameters.workspace_name >>
+    steps:
+    - attach_workspace:
+        at: ~/project
+    - run:
+        name: Terraform Cloud - pass token
+        command: |
+          echo "credentials \"app.terraform.io\" {token =
+          \"$TERRAFORM_TOKEN\"}" > $HOME/.terraformrc
+    - run:
+        name: Checkout base branch
+        command: |
+          git clone $CIRCLE_REPOSITORY_URL --branch=main --single-branch /tmp/base
+    - run:
+        name: Infracost - Grab original cost report from base branch
+        command: |
+          cd /tmp/base/<< parameters.workspace_name >>
+          pwd
+          infracost breakdown --path . --format json --out-file /tmp/base/infracost-base.json
+          infracost breakdown --path .
+    - run:
+        name: Infracost - Generate diff report
+        command: |
+          cd /root/project/<< parameters.workspace_name >>
+          pwd
+          infracost diff --path . \
+            --format=json \
+            --compare-to=/tmp/base/infracost-base.json \
+            --out-file=/tmp/infracost.json
+
+    - run:
+        name: Infracost PR Bot - Post estimated costs in difference in PR
+        # Choose the commenting behavior, 'new' is a good default:
+        # new: Create a new cost estimate comment on every run for each project.
+        # update: Create a single comment and update it. The "quietest" option.
+        # hide-and-new: Minimize previous comments and create a new one.
+        # delete-and-new: Delete previous comments and create a new one.
+        command: |
+          PULL_NUM=${CI_PULL_REQUEST#*pull/}
+          ls -a
+          infracost comment github --repo richcontext/devops \
+            --pull-request $((PULL_NUM)) \
+            --path /tmp/infracost.json \
+            --github-token $GITHUB_TOKEN \
+            --behavior hide-and-new
+  apply:
+    parameters:
+      workspace_name:
+        type: string
+    executor: devops-pipeline-image
+    working_directory: ~/project/<< parameters.workspace_name >>
+    steps:
+    - attach_workspace:
+        at: ~/project
+    - run:
+        name: Terraform Cloud - pass token
+        command: |
+          echo "credentials \"app.terraform.io\" {token =
+          \"$TERRAFORM_TOKEN\"}" > $HOME/.terraformrc
+    - run:
+        name: Terraform - Apply Changes to infrastructure
+        command: |
+          terraform apply plan.out -no-color 2>&1 | tee tf-apply.txt
+          tail -n 130 tf-apply.txt | sponge tf-apply.txt
+          dos2unix tf-apply.txt
+    - run:
+        name: GitHub Bot - Post tf-apply results to PR
+        command: |-
+          export CIRCLE_PR_NUMBER=${CIRCLE_PR_NUMBER:-${CIRCLE_PULL_REQUEST##*/}}
+          if [ -z $CIRCLE_PR_NUMBER ]; then echo "Not a pull request - aborting"; exit 0; fi
+          cat tf-apply.txt | github-commenter \
+            -owner ${CIRCLE_PROJECT_USERNAME} \
+            -repo ${CIRCLE_PROJECT_REPONAME} \
+            -number $CIRCLE_PR_NUMBER \
+            -delete-comment-regex "$Deploy-Infras Job complete" \
+            -type pr \
+            -format "<h1>✅ Deploy-Infras Job complete</h1>
+                      <h2>Results from Terraform Apply job:</h2>
+                      <details>
+                          <summary><strong>Click here for more details</strong></summary>
+                          <pre><code>{{.}}</code></pre>
+                      </details>
+                      <h4><a href="$CIRCLE_BUILD_URL">Note: Access Full Results here</a></h4>"
+
+workflows:
+  api-gateway:
+    when: << pipeline.parameters.api-gateway >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: api-gateway
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: api-gateway
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: api-gateway
+        requires:
+        - Terraform - Click here to apply changes
+  cloudfront:
+    when: << pipeline.parameters.cloudfront >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: cloudfront
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: cloudfront
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: cloudfront
+        requires:
+        - Terraform - Click here to apply changes
+  cloudwatch:
+    when: << pipeline.parameters.cloudwatch >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: cloudwatch
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: cloudwatch
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: cloudwatch
+        requires:
+        - Terraform - Click here to apply changes
+  cluster-1-eksctl:
+    when: << pipeline.parameters.cluster-1-eksctl >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: cluster-1-eksctl
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: cluster-1-eksctl
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: cluster-1-eksctl
+        requires:
+        - Terraform - Click here to apply changes
+  dynamodb:
+    when: << pipeline.parameters.dynamodb >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: dynamodb
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: dynamodb
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: dynamodb
+        requires:
+        - Terraform - Click here to apply changes
+  ec2:
+    when: << pipeline.parameters.ec2 >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: ec2
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: ec2
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: ec2
+        requires:
+        - Terraform - Click here to apply changes
+  ecr:
+    when: << pipeline.parameters.ecr >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: ecr
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: ecr
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: ecr
+        requires:
+        - Terraform - Click here to apply changes
+  efs:
+    when: << pipeline.parameters.efs >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: efs
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: efs
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: efs
+        requires:
+        - Terraform - Click here to apply changes
+  elasticache:
+    when: << pipeline.parameters.elasticache >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: elasticache
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: elasticache
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: elasticache
+        requires:
+        - Terraform - Click here to apply changes
+  iam:
+    when: << pipeline.parameters.iam >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: iam
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: iam
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: iam
+        requires:
+        - Terraform - Click here to apply changes
+  kinesis:
+    when: << pipeline.parameters.kinesis >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: kinesis
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: kinesis
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: kinesis
+        requires:
+        - Terraform - Click here to apply changes
+  lambda:
+    when: << pipeline.parameters.lambda >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: lambda
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: lambda
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: lambda
+        requires:
+        - Terraform - Click here to apply changes
+  rc-production:
+    when: << pipeline.parameters.rc-production >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: rc-production
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: rc-production
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: rc-production
+        requires:
+        - Terraform - Click here to apply changes
+  rds:
+    when: << pipeline.parameters.rds >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: rds
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: rds
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: rds
+        requires:
+        - Terraform - Click here to apply changes
+  route53:
+    when: << pipeline.parameters.route53 >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: route53
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: route53
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: route53
+        requires:
+        - Terraform - Click here to apply changes
+  s3:
+    when: << pipeline.parameters.s3 >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: s3
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: s3
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: s3
+        requires:
+        - Terraform - Click here to apply changes
+  sqs:
+    when: << pipeline.parameters.sqs >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: sqs
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: sqs
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: sqs
+        requires:
+        - Terraform - Click here to apply changes
+  vpc:
+    when: << pipeline.parameters.vpc >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: vpc
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: vpc
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: vpc
+        requires:
+        - Terraform - Click here to apply changes
+  vpc_endpoints:
+    when: << pipeline.parameters.sqs >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: vpc_endpoints
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: vpc_endpoints
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: sqs
+        requires:
+        - Terraform - Click here to apply changes
+  user_access_control_prod:
+    when: << pipeline.parameters.user_access_control_prod >>
+    jobs:
+    - test-run_plan:
+        name: Terraform - Confirm Changes
+        workspace_name: user_access_control_prod
+        filters:
+          branches:
+            ignore:
+            - main
+    - infracost:
+        name: Infracost - Estimate cost of IaC changes
+        workspace_name: user_access_control_prod
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - click-to-apply-changes:
+        name: Terraform - Click here to apply changes
+        type: approval
+        requires:
+        - Terraform - Confirm Changes
+        filters:
+          branches:
+            ignore:
+            - main
+    - apply:
+        name: Terraform - Apply Changes
+        workspace_name: user_access_control_prod
+        requires:
+        - Terraform - Click here to apply changes

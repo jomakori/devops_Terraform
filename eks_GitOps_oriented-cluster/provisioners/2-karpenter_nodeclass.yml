@@ -1,0 +1,26 @@
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: ${KARPENTER_PROVISIONER}
+  kubernetes.io/description: "EC2NodeClass for placing Karpenter nodes in EKS"
+spec:
+  amiFamily: AL2
+  role: ${KARPENTER_NODE_ROLE}
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeType: gp3
+        volumeSize: 30Gi
+        encrypted: true
+        deleteOnTermination: true
+  subnetSelectorTerms:
+    - tags:
+        kubernetes.io/role/internal-elb: "1" # keep nodes private
+        karpenter.sh/discovery: ${CLUSTER_NAME}
+  securityGroupSelectorTerms:
+    - tags:
+        aws:eks:cluster-name: ${CLUSTER_NAME}
+  tags:
+    Name: "karpenter.sh/${CLUSTER_NAME}-workers"
+    karpenter.sh/discovery: ${CLUSTER_NAME}
+    isto_containers: AWS_EKS # Accenture Monitoring exception

@@ -1,0 +1,732 @@
+version: 2.1
+orbs:
+  aws-cli: circleci/aws-cli@3.1.1
+  infracost: infracost/infracost@0.8.4
+
+parameters:
+  # A parameter per workspace
+  api-gateway:
+    type: boolean
+    default: false
+  cloudfront:
+    type: boolean
+    default: false
+  cloudwatch:
+    type: boolean
+    default: false
+  cluster-1-eksctl:
+    type: boolean
+    default: false
+  dynamodb:
+    type: boolean
+    default: false
+  ec2:
+    type: boolean
+    default: false
+  ecr:
+    type: boolean
+    default: false
+  efs:
+    type: boolean
+    default: false
+  elasticache:
+    type: boolean
+    default: false
+  iam:
+    type: boolean
+    default: false
+  kinesis:
+    type: boolean
+    default: false
+  lambda:
+    type: boolean
+    default: false
+  rc-production:
+    type: boolean
+    default: false
+  rds:
+    type: boolean
+    default: false
+  route53:
+    type: boolean
+    default: false
+  s3:
+    type: boolean
+    default: false
+  sqs:
+    type: boolean
+    default: false
+  vpc:
+    type: boolean
+    default: false
+  vpc_endpoints:
+    type: boolean
+    default: false
+  user_access_control_prod:
+    type: boolean
+    default: false
+
+executors:
+  devops-pipeline-image:
+    docker:
+    - image: $PIPELINE_IMAGE
+      aws_auth:
+        aws_access_key_id: $AWS_ACCESS_KEY_ID
+        aws_secret_access_key: $AWS_SECRET_ACCESS_KEY
+jobs:
+  tf-destroy-plan:
+    parameters:
+      workspace_name:
+        type: string
+    executor: devops-pipeline-image
+    working_directory: /project
+    steps:
+    - run:
+        name: Terraform Cloud - pass token
+        command: |
+          echo "credentials \"app.terraform.io\" {token =
+          \"$TERRAFORM_TOKEN\"}" > $HOME/.terraformrc
+    - run:
+        name: Terraform - Initialize workspace ~ Grab modules
+        command: |
+          echo "Pulling master branch..."
+          git clone $CIRCLE_REPOSITORY_URL --branch=master --single-branch /project
+          echo "Confirming master branch pulled in."
+          ls -a
+          cd << parameters.workspace_name >>
+          terraform init
+    - run:
+        name: Terraform - Create Destroy Plan
+        command: |
+          cd << parameters.workspace_name >>
+          echo "Terraform - Proposed Destroy changes for << parameters.workspace_name >> workspace..."
+          terraform plan -destroy -out=plan.out -parallelism=100 -no-color 2>&1 | tee tf-destroy-plan.txt
+          tail -n 130 tf-destroy-plan.txt | sponge tf-destroy-plan.txt
+          dos2unix f-destroy-plan
+    - run:
+        name: GitHub Bot - Post destroy-infras plan results to PR
+        command: |
+          cd << parameters.workspace_name >>
+          echo "Confirming correct dir for tf-destroy-plan.txt"
+          ls -a
+          export CIRCLE_PR_NUMBER=${CIRCLE_PR_NUMBER:-${CIRCLE_PULL_REQUEST##*/}}
+          if [ -z $CIRCLE_PR_NUMBER ]; then echo "Not a pull request - aborting"; exit 0; fi
+          cat tf-destroy-plan.txt | github-commenter \
+            -owner ${CIRCLE_PROJECT_USERNAME} \
+            -repo ${CIRCLE_PROJECT_REPONAME} \
+            -number $CIRCLE_PR_NUMBER \
+            -delete-comment-regex "$Proposed changes for Terraform Destroy job" \
+            -type pr \
+            -format "<h2>🤔 Proposed changes for Terraform Destroy job:</h2>
+                      <details>
+                          <summary><strong>Click here for more details</strong></summary>
+                          <pre><code>{{.}}</code></pre>
+                      </details>
+                      <h4><a href="$CIRCLE_BUILD_URL">Note: Access Full Results here</a></h4>
+                      <h3><a href="https://app.circleci.com/pipelines/github/richcontext/devops" target="_blank">Approve the changes</a></h3>"
+    - persist_to_workspace: # for following jobs
+        root: /project
+        paths:
+        - .
+  tf-destroy:
+    parameters:
+      workspace_name:
+        type: string
+    executor: devops-pipeline-image
+    working_directory: ~/project
+    steps:
+    - attach_workspace:
+        at: ~/project
+    - run:
+        name: Terraform - Destroy changes to infrastructure
+        command: |
+          cd << parameters.workspace_name >>
+          echo "Confirming master branch pulled in."
+          ls -a
+          echo "Terraform - Destroying << parameters.workspace_name >> workspace..."
+          terraform apply -destroy plan.out -parallelism=100 -no-color 2>&1 | tee tf-destroy.txt
+          tail -n 130 tf-destroy.txt | sponge tf-destroy.txt
+          dos2unix tf-destroy.txt
+    - run:
+        name: GitHub Bot - Post destroy-infras results to PR
+        command: |
+          cd << parameters.workspace_name >>
+          echo "Confirming correct dir for tf-destroy.txt"
+          ls -a
+          export CIRCLE_PR_NUMBER=${CIRCLE_PR_NUMBER:-${CIRCLE_PULL_REQUEST##*/}}
+          if [ -z $CIRCLE_PR_NUMBER ]; then echo "Not a pull request - aborting"; exit 0; fi
+          cat tf-destroy.txt | github-commenter \
+            -owner ${CIRCLE_PROJECT_USERNAME} \
+            -repo ${CIRCLE_PROJECT_REPONAME} \
+            -number $CIRCLE_PR_NUMBER \
+            -delete-comment-regex "$Results from Terraform Destroy job" \
+            -type pr \
+            -format "<h1>✅ Destroy-Infras Job complete</h1>
+                      <h2>Results from Terraform Destroy job:</h2>
+                      <details>
+                          <summary><strong>Click here for more details</strong></summary>
+                          <pre><code>{{.}}</code></pre>
+                      </details>
+                      <h4><a href="$CIRCLE_BUILD_URL">Note: Access Full Results here</a></h4>"
+
+workflows:
+  api-gateway:
+    when: << pipeline.parameters.api-gateway >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: api-gateway
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: api-gateway
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  cloudfront:
+    when: << pipeline.parameters.cloudfront >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: cloudfront
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: cloudfront
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  cloudwatch:
+    when: << pipeline.parameters.cloudwatch >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: cloudwatch
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: cloudwatch
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  cluster-1-eksctl:
+    when: << pipeline.parameters.cluster-1-eksctl >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: cluster-1-eksctl
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: cluster-1-eksctl
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  dynamodb:
+    when: << pipeline.parameters.dynamodb >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: dynamodb
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: dynamodb
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  ec2:
+    when: << pipeline.parameters.ec2 >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: ec2
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: ec2
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  ecr:
+    when: << pipeline.parameters.ecr >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: ecr
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: ecr
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  efs:
+    when: << pipeline.parameters.efs >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: efs
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: efs
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  elasticache:
+    when: << pipeline.parameters.elasticache >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: elasticache
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: elasticache
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  iam:
+    when: << pipeline.parameters.iam >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: iam
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: iam
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  kinesis:
+    when: << pipeline.parameters.kinesis >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: kinesis
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: kinesis
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  lambda:
+    when: << pipeline.parameters.lambda >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: lambda
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: lambda
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  rc-production:
+    when: << pipeline.parameters.rc-production >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: rc-production
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: rc-production
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  rds:
+    when: << pipeline.parameters.rds >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: rds
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: rds
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  route53:
+    when: << pipeline.parameters.route53 >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: route53
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: route53
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  s3:
+    when: << pipeline.parameters.s3 >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: s3
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: s3
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  sqs:
+    when: << pipeline.parameters.sqs >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: sqs
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: sqs
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  vpc:
+    when: << pipeline.parameters.vpc >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: vpc
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: vpc
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  vpc_endpoints:
+    when: << pipeline.parameters.vpc_endpoints >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: vpc_endpoints
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: vpc_endpoints
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master
+  user_access_control_prod:
+    when: << pipeline.parameters.user_access_control_prod >>
+    jobs:
+    - tf-destroy-plan:
+        name: Terraform - Confirm Destruction
+        workspace_name: user_access_control_prod
+        filters:
+          branches:
+            ignore:
+            - master
+    - confirm-destroy-changes:
+        name: Terraform - Click here to confirm destroy-infras
+        type: approval
+        requires:
+        - Terraform - Confirm Destruction
+        filters:
+          branches:
+            ignore:
+            - master
+    - tf-destroy:
+        name: Terraform - Apply Destruction
+        workspace_name: user_access_control_prod
+        requires:
+        - Terraform - Click here to confirm destroy-infras
+        filters:
+          branches:
+            ignore:
+            - master

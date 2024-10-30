@@ -1,0 +1,6 @@
+# Used for Checkov Testing to skip checks, etc
+skip-check:
+  - LOW
+  - CKV_TF_1 # not necessary - https://docs.prismacloud.io/en/enterprise-edition/policy-reference/supply-chain-policies/terraform-policies/ensure-terraform-module-sources-use-git-url-with-commit-hash-revision
+  - CKV_AWS_149 # not necessary - https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-general-policies/ensure-that-secrets-manager-secret-is-encrypted-using-kms
+soft-fail: true

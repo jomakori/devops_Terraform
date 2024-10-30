@@ -1,0 +1,14 @@
+venv
+*.ansi
+*.out
+*.log
+*.tmp
+*.log
+*.retry
+.idea
+**.terraform
+.DS_Store
+.tfvars
+.vscode
+**terraform.lock.hcl
+sleep_clouddesktops.zip

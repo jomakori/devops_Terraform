@@ -1,0 +1,126 @@
+name: Terraform Plan
+
+on:
+  workflow_dispatch:  # manual run fallback
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  detect-changes:
+    name: Detect Terraform Changes
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.detect.outputs.changed }}
+      destroy: ${{ steps.destroy.outputs.destroy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 0
+
+      - name: Detect Terraform Workspace Changes
+        id: detect
+        run:  |
+          # check - Only allow changes on a single workspace
+          workspaces=$(git diff --name-only origin/main HEAD | awk -F/ '!/^\.|^\// && /\// {print $1}' | sort | uniq)
+          count=$(echo "$workspaces" | wc -l)
+
+          if [ -z "$workspaces" ]; then
+            echo "No Terraform changes detected - Skipping workflow..."
+          elif [ $count -eq 1 ]; then
+            echo "Detected Terraform Workspace changes on: $workspaces"
+          else
+            echo "Error: Too many workspaces detected: $count"
+            echo "You can only make changes on 1 workspace per PR"
+            echo "Terraform Workspaces detected: $workspaces"
+            exit 1
+          fi
+
+          # Pass workspace name to outputs
+          echo "changed=$workspaces" >> $GITHUB_OUTPUT
+
+      - name: Check - Terraform Plan - Apply or Destroy
+        if: steps.detect.outputs.changed != '' # if null - skip
+        id: destroy
+        run: |
+          # Grab changed workspace
+          dir_string=${{ steps.detect.outputs.changed }}
+
+          # Trigger Apply or Destroy Plan
+          if [ -d $dir_string ]; then
+            echo "Trigger Terraform Apply Plan on: $dir_string"
+            echo "destroy=false" >> $GITHUB_OUTPUT
+          else
+            echo "Trigger Terraform Destroy Plan on: $dir_string"
+            echo "destroy=true" >> $GITHUB_OUTPUT
+          fi
+
+  terraform-plan:
+    # Conditional - Ensures outputs are set in previous workflow
+    if: needs.detect-changes.outputs.changed != '' && needs.detect-changes.outputs.destroy != ''
+
+    runs-on: ubuntu-latest
+    name: Plan Changes
+    needs: detect-changes
+    env:
+      WORKSPACE: ${{ needs.detect-changes.outputs.changed }}
+      DESTROY: ${{ needs.detect-changes.outputs.destroy }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@main
+        with:
+          # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
+          ref: ${{ (env.DESTROY == 'true' && 'main') || github.head_ref }}
+
+      - name: Install Doppler cli
+        uses: dopplerhq/cli-action@master
+
+      - name: Fetch Doppler Secrets
+        id: doppler
+        uses: dopplerhq/secrets-fetch-action@main
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          inject-env-vars: true
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@main
+        with:
+          aws-region: ${{ env.DEFAULT_AWS_REGION }}
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Plan - ${{ env.WORKSPACE }} - Apply (conditional)
+        if: env.DESTROY == 'false'
+        id: terraform-ci
+        uses: skyfjell/terraform-ci@latest
+        with:
+          working_directory: ${{ env.WORKSPACE }}
+          terraform_token: ${{ env.TERRAFORM_TOKEN }}
+          github_token: ${{ env.GITHUB_TOKEN }}
+          mode: plan
+
+      - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
+        if: env.DESTROY == 'true'
+        uses: dflook/terraform-plan@main
+        env:
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }} 
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ env.TERRAFORM_TOKEN }}
+          TERRAFORM_PRE_RUN: |
+            command -v aws >/dev/null 2>&1 || {
+                echo >&2 "Installing awscli...";
+                curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" >/dev/null;
+                unzip awscliv2.zip >/dev/null;
+                ./aws/install;
+            }
+        with:
+          workspace: ${{ env.WORKSPACE }}
+          path: ${{ env.WORKSPACE }} 
+          destroy: true

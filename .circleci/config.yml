@@ -1,0 +1,161 @@
+version: 2.1
+
+# this allows you to use CircleCI's dynamic configuration feature
+setup: true
+
+# the path-filtering orb is required to continue a pipeline based on
+# the path of an updated fileset
+orbs:
+  path-filtering: circleci/path-filtering@0.1.3
+executors:
+  devops-pipeline-image:
+    docker:
+      - image: $PIPELINE_IMAGE
+        aws_auth:
+          aws_access_key_id: $AWS_ACCESS_KEY_ID
+          aws_secret_access_key: $AWS_SECRET_ACCESS_KEY
+jobs:
+  update-pipeline-image:
+    executor: devops-pipeline-image
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Confirm whether a new pipeline image is needed, based on dependency version
+          command: |
+            # Check if Doppler CLI is up-to-date
+            LATEST_VERSION=$(curl -s https://api.github.com/repos/DopplerHQ/cli/releases/latest | grep "tag_name" | cut -d '"' -f 4)
+            CURRENT_VERSION=$(doppler -v | sed 's/v//')
+            if [ "$LATEST_VERSION" = "$CURRENT_VERSION" ]; then
+              echo "Doppler is up to date with version $CURRENT_VERSION"
+              echo "Skipping Pipeline image update. ✅"
+              circleci-agent step halt
+              exit 0
+            elif [ "$LATEST_VERSION" != "$CURRENT_VERSION" ]; then
+              echo "Pipeline image needs to update. Doppler version: $CURRENT_VERSION, latest version: $LATEST_VERSION"
+              echo "Proceeding to update Pipeline image... 🔄"
+            else
+              echo "error: Not able to retrieve versions. Debug CircleCI config"
+              echo "Doppler version: $CURRENT_VERSION, latest version: $LATEST_VERSION"
+              exit 1
+            fi
+      - checkout
+      - run:
+          name: Update dependencies in pipeline image
+          command: |
+            set -e
+            # Get the repository URL
+            REPO_URL=$(aws ecr describe-repositories \
+              --repository-names devops-pipeline \
+              --query 'repositories[0].repositoryUri' \
+              --output text)
+
+            # Get the latest image tag
+            IMAGE_TAG=$(aws ecr describe-images \
+              --repository-name devops-pipeline \
+              --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' \
+              --output text)
+
+            # Increment image tag by .01 and set var
+            IMAGE_TAG=$(echo "$IMAGE_TAG 0.01" | awk '{printf "%.2f", $1 + $2}')
+
+            # Update PIPELINE_IMAGE with the new tag
+            doppler secrets set PIPELINE_IMAGE $(echo "${REPO_URL}:${IMAGE_TAG}") --no-check-version
+            NEW_PIPELINE_IMAGE=$(doppler secrets get PIPELINE_IMAGE --plain --no-check-version)
+
+            # Login/Build Docker image
+            docker build -t $NEW_PIPELINE_IMAGE .
+
+            # Push Docker image to ECR
+            aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 376424775662.dkr.ecr.us-east-2.amazonaws.com
+            docker push $NEW_PIPELINE_IMAGE
+      - run:
+          name: Reset image tag - failure protocol
+          when: on_fail
+          command: |
+            echo "Rolling back previous image tag"
+            REPO_URL=$(aws ecr describe-repositories --repository-names devops-pipeline \
+              --query 'repositories[0].repositoryUri' --output text)
+            IMAGE_TAG=$(aws ecr describe-images --repository-name devops-pipeline \
+            --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' --output text)
+
+            doppler secrets set PIPELINE_IMAGE $(echo "${REPO_URL}:${IMAGE_TAG}") --no-check-version
+  determine-workflow:
+    executor: devops-pipeline-image
+    working_directory: ~/project
+    steps:
+      - checkout:
+          name: Checkout git workspace
+          path: ~/project
+          at: ~/project
+      - run: # Determines workflow and temp creates continue-config.yml
+          name: trigger - Determine Workflow
+          command: |
+            cd .circleci && chmod +x workflow_trigger.sh && bash workflow_trigger.sh
+      - persist_to_workspace: # passes config file to continue workflow below
+          root: ~/project
+          paths:
+            - .
+workflows:
+  # The main workflow responsible for triggering all other workflows
+  # in which changes are detected.
+  check-changes:
+    jobs:
+      # Checks if pipeline image needs updating (Based on Doppler's latest version)
+      - update-pipeline-image:
+          filters:
+            branches:
+              ignore:
+                - main
+      # Workflow triggers deploy-infras destroy-infras parameter
+      - determine-workflow:
+          requires:
+            - update-pipeline-image
+          filters:
+            branches:
+              ignore:
+                - main
+      # the path-filtering/filter job determines which pipeline
+      # parameters to update.
+      - path-filtering/filter:
+          pre-steps:
+            - attach_workspace:
+                at: ~/project
+          name: check-updated-files
+          # 3-column, whitespace-delimited mapping. One mapping per
+          # line:
+          # <regex path-to-test> <parameter-to-set> <value-of-pipeline-parameter>
+          mapping: |
+            api-gateway/.* api-gateway true
+            cloudfront/.* cloudfront true
+            cloudwatch/.* cloudwatch true
+            cluster-1-eksctl/.* cluster-1-eksctl true
+            dynamodb/.* dynamodb true
+            ec2/.* ec2 true
+            ecr/.* ecr true
+            efs/.* efs true
+            eks-hyphen-k8s-cluster/.* eks-hyphen-k8s-cluster true
+            elasticache/.* elasticache true
+            iam/.* iam true
+            kinesis/.* kinesis true
+            lambda/.* lambda true
+            rc-production/.* rc-production true
+            rds/.* rds true
+            route53/.* route53 true
+            s3/.* s3 true
+            sqs/.* sqs true
+            user_access_control_prod/.* user_access_control_prod true
+            vpc/.* vpc true
+            vpc_endpoints/.* vpc_endpoints true
+          base-revision: main
+          # this is the path of the configuration we should trigger once
+          # path filtering and pipeline parameter value updates are
+          # complete. In this case, we are using the parent dynamic
+          # configuration itself.
+          config-path: .circleci/continue-config.yml
+          requires:
+            - determine-workflow
+          filters:
+            branches:
+              ignore:
+                - main
