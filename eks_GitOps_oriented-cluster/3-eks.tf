@@ -1,13 +1,13 @@
 #--------------------------------------------------------------------------------------------#
 #------------------------------------ Create EKS Cluster ------------------------------------#
 #--------------------------------------------------------------------------------------------#
-# Grab Accenture VPN CIDR's
-data "aws_ec2_managed_prefix_list" "accenture_vpn" {
+# Grab prefix list CIDR's
+data "aws_ec2_managed_prefix_list" "vpn" {
   id = "pl-123456"
 }
 ## Filter only the CIDR blocks
 locals {
-  vpn_cidrs = [for entry in data.aws_ec2_managed_prefix_list.accenture_vpn.entries : entry.cidr]
+  vpn_cidrs = [for entry in data.aws_ec2_managed_prefix_list.vpn.entries : entry.cidr]
 }
 
 module "eks" {
@@ -271,7 +271,7 @@ module "eks_node_group" {
 
 
   tags = merge(tomap({
-    isto_containers = "AWS_EKS" }), # Accenture ISD Requirement
+    isto_containers = "AWS_EKS" }), # scan exception
     var.tags
   )
 }

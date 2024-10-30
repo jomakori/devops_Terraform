@@ -6,7 +6,7 @@ This Terraform script allows for managing users and their access to GitHub repos
 
 The script uses a CSV file to store information about users. To set up, you need to create a CSV file with the following columns:
 
-- `Accenture_UID`: your Accenture ID w/ modification - used as the Postgres username.
+- `EMPLOYEE_UID`: your enployee ID w/ modification - used as the Postgres username.
 - `GITHUB_USER`: the user's GitHub username.
 - `GITHUB_ROLE`: the user's role in GitHub (either "admin,maintainer" or "member").
 

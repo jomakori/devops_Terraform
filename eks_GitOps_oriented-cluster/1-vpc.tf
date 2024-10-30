@@ -30,7 +30,7 @@ module "vpc" {
   flow_log_destination_type                       = "cloud-watch-logs"
   create_flow_log_cloudwatch_log_group            = true
   create_flow_log_cloudwatch_iam_role             = true
-  flow_log_cloudwatch_log_group_retention_in_days = 180 # Accenture Policy: Minimum 6 month retention
+  flow_log_cloudwatch_log_group_retention_in_days = 180 # Minimum 6 month retention
 
   # Tagging
   public_subnet_tags = {

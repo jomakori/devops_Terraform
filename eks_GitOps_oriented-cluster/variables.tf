@@ -23,7 +23,7 @@ variable "tags" {
   default = {
     environment        = "Production"
     deployment         = "commerce-engine-k8s-cluster"
-    "QSConfigId-yug6d" = "yug6d" # Accenture ISD
+    "QSConfigId-yug6d" = "yug6d" # scan exception
   }
 }
 

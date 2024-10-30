@@ -46,13 +46,13 @@ resource "aws_security_group" "gateway_access" {
   name        = "${var.gateway_name}-gateway_access"
   description = "Whitelist access to & from ${var.gateway_name} gateways"
   vpc_id      = data.aws_vpc.gateway_vpc.id
-  # Whitelist Accenture VPN users
+  # Whitelist prefix list users
   ingress {
     from_port       = 3389
     to_port         = 3389
     protocol        = "tcp"
     prefix_list_ids = ["pl-0eeaa81051cd80999"]
-    description     = "Whitelist Accenture VPN users - USA only"
+    description     = "Whitelist prefix list users"
   }
   # Whitelist Splunk
   ingress {

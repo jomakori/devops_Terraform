@@ -23,4 +23,4 @@ spec:
   tags:
     Name: "karpenter.sh/${CLUSTER_NAME}-workers"
     karpenter.sh/discovery: ${CLUSTER_NAME}
-    isto_containers: AWS_EKS # Accenture Monitoring exception
+    isto_containers: AWS_EKS # Monitoring scan exception
