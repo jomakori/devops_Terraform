@@ -30,7 +30,7 @@
 >   - [🌎 Confirm Changes Locally](#-confirm-changes-locally)
 >   - [🧪 Run Tests](#-run-tests)
 > - [📦 Deploy Changes](#-deploy-changes)
-> - [🗂️ Featured Workspaces](-featured-workspaces)
+> - [🗂️ Featured Workspaces](#-featured-workspaces)
 
 ---
 
