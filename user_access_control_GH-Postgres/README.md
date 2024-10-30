@@ -61,12 +61,12 @@ Remember, Terraform manages the state of your infrastructure, so any changes sho
 
 | Name | Version |
 |------|---------|
-| <a name="provider_doppler.production"></a> [doppler.production](#provider\_doppler.production) | 1.9.0 |
-| <a name="provider_doppler.staging"></a> [doppler.staging](#provider\_doppler.staging) | 1.9.0 |
-| <a name="provider_github"></a> [github](#provider\_github) | 6.2.3 |
-| <a name="provider_postgresql.production"></a> [postgresql.production](#provider\_postgresql.production) | 1.22.0 |
-| <a name="provider_postgresql.staging"></a> [postgresql.staging](#provider\_postgresql.staging) | 1.22.0 |
-| <a name="provider_random"></a> [random](#provider\_random) | 3.6.2 |
+| <a name="provider_doppler.production"></a> [doppler.production](#provider\_doppler.production) | >= 1.9.0 |
+| <a name="provider_doppler.staging"></a> [doppler.staging](#provider\_doppler.staging) | >= 1.9.0 |
+| <a name="provider_github"></a> [github](#provider\_github) | >= 5.0 |
+| <a name="provider_postgresql.production"></a> [postgresql.production](#provider\_postgresql.production) | >= 1.22.0 |
+| <a name="provider_postgresql.staging"></a> [postgresql.staging](#provider\_postgresql.staging) | >= 1.22.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | n/a |
 
 ## Modules
 
@@ -93,11 +93,11 @@ No modules.
 |------|-------------|------|---------|:--------:|
 | <a name="input_AWS_ACCOUNT_ID"></a> [AWS\_ACCOUNT\_ID](#input\_AWS\_ACCOUNT\_ID) | AWS Account ID | `any` | n/a | yes |
 | <a name="input_AWS_REGION"></a> [AWS\_REGION](#input\_AWS\_REGION) | Default AWS Region | `any` | n/a | yes |
-| <a name="input_DB_NAME"></a> [DB\_NAME](#input\_DB\_NAME) | ShadowFax db | `any` | n/a | yes |
-| <a name="input_DB_PASSWORD"></a> [DB\_PASSWORD](#input\_DB\_PASSWORD) | ShadowFax Admin | `any` | n/a | yes |
-| <a name="input_DB_USER"></a> [DB\_USER](#input\_DB\_USER) | ShadowFax Admin | `any` | n/a | yes |
-| <a name="input_DOPPLER_PROD_TOKEN"></a> [DOPPLER\_PROD\_TOKEN](#input\_DOPPLER\_PROD\_TOKEN) | The Doppler cred for ShadowFax - Production | `any` | n/a | yes |
-| <a name="input_DOPPLER_STAGING_TOKEN"></a> [DOPPLER\_STAGING\_TOKEN](#input\_DOPPLER\_STAGING\_TOKEN) | The Doppler cred for ShadowFax - Staging | `any` | n/a | yes |
+| <a name="input_DB_NAME"></a> [DB\_NAME](#input\_DB\_NAME) | Demo\_App db | `any` | n/a | yes |
+| <a name="input_DB_PASSWORD"></a> [DB\_PASSWORD](#input\_DB\_PASSWORD) | Demo\_App Admin | `any` | n/a | yes |
+| <a name="input_DB_USER"></a> [DB\_USER](#input\_DB\_USER) | Demo\_App Admin | `any` | n/a | yes |
+| <a name="input_DOPPLER_PROD_TOKEN"></a> [DOPPLER\_PROD\_TOKEN](#input\_DOPPLER\_PROD\_TOKEN) | The Doppler cred for Demo\_App - Production | `any` | n/a | yes |
+| <a name="input_DOPPLER_STAGING_TOKEN"></a> [DOPPLER\_STAGING\_TOKEN](#input\_DOPPLER\_STAGING\_TOKEN) | The Doppler cred for Demo\_App - Staging | `any` | n/a | yes |
 | <a name="input_GITHUB_TOKEN"></a> [GITHUB\_TOKEN](#input\_GITHUB\_TOKEN) | GitHub Token for Robopony | `any` | n/a | yes |
 | <a name="input_PROD_DB_HOST"></a> [PROD\_DB\_HOST](#input\_PROD\_DB\_HOST) | Postgres host - Production | `any` | n/a | yes |
 | <a name="input_STAGING_DB_HOST"></a> [STAGING\_DB\_HOST](#input\_STAGING\_DB\_HOST) | Postgres host - Production | `any` | n/a | yes |
