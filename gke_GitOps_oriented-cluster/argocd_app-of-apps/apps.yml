@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apps
+  namespace: argocd
+spec:
+  project: default
+  labels: app.kubernetes.io/managed-by=Helm
+  source:
+    repoURL: ${gitops_repo}
+    path: ${gitops_apps_path}
+    targetRevision: ${gitops_branch}
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        # GitOps Path
+        - name: repoUrl
+          value: ${gitops_repo}
+        - name: path
+          value: ${gitops_apps_path}
+        - name: targetRevision
+          value: ${gitops_branch}
+        # Doppler Tokens for apps/envs
+        - name: demo_app.environment.staging.dopplerToken
+          value: "${doppler_demo_app_staging}"
+        - name: demo_app.environment.production.dopplerToken
+          value: "${doppler_demo_app_prod}"
+        - name: retailerOauth.environment.production.dopplerToken
+          value: "${doppler_retailer_prod}"
+  destination:
+    server: "https://kubernetes.default.svc"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - Validate=false
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

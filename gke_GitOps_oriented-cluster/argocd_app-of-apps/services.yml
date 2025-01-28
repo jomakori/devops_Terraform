@@ -1,0 +1,62 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: services
+  namespace: argocd
+spec:
+  project: default
+  labels: app.kubernetes.io/managed-by=Helm
+  source:
+    repoURL: ${gitops_repo}
+    path: ${gitops_services_path}
+    targetRevision: ${gitops_branch}
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: repoUrl
+          value: ${gitops_repo}
+        - name: path
+          value: ${gitops_services_path}
+        - name: targetRevision
+          value: ${gitops_branch}
+        - name: region
+          value: "${aws-region}"
+        - name: account
+          value: "${aws-account}"
+        - name: clusterName
+          value: "${aws-cluster_name}"
+        - name: clusterEndpoint
+          value: "${aws-cluster_endpoint}"
+        - name: awsLoadBalancerController.serviceAccountName
+          value: "${awsloadbalancercontroller-sa}"
+        - name: externalSecrets.serviceAccountName
+          value: "${externalsecrets-sa}"
+        - name: karpenter.serviceAccountName
+          value: "${karpenter-sa}"
+        - name: karpenter.interruptionQueueName
+          value: "${karpenter-sqs_queue}"
+        - name: dbTunnel.environment.production.endpoint
+          value: "${DB_TUNNEL_PROD_DB_HOST}"
+        - name: dbTunnel.environment.staging.endpoint
+          value: "${DB_TUNNEL_STAGING_DB_HOST}"
+        - name: redis-cluster.password
+          value: "${REDIS_PW}"
+  destination:
+    server: "https://kubernetes.default.svc"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - Validate=false
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
