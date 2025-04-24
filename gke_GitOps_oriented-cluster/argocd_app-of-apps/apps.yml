@@ -22,12 +22,10 @@ spec:
         - name: targetRevision
           value: ${gitops_branch}
         # Doppler Tokens for apps/envs
-        - name: demo_app.environment.staging.dopplerToken
-          value: "${doppler_demo_app_staging}"
-        - name: demo_app.environment.production.dopplerToken
-          value: "${doppler_demo_app_prod}"
-        - name: retailerOauth.environment.production.dopplerToken
-          value: "${doppler_retailer_prod}"
+        - name: notesApp.environment.staging.dopplerToken
+          value: "${doppler_notes_app_staging}"
+        - name: notesApp.environment.production.dopplerToken
+          value: "${doppler_notes_app_prod}"
   destination:
     server: "https://kubernetes.default.svc"
   syncPolicy:

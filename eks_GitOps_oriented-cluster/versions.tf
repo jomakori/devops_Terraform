@@ -3,13 +3,6 @@
 ###############################################################################################
 terraform {
   required_version = ">= 1.0"
-  cloud {
-    organization = "demo_org"
-
-    workspaces {
-      name = "eks_commerce-engine-k8s-cluster"
-    }
-  }
 
   required_providers {
     aws = {
@@ -22,7 +15,7 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "2.22.0"
+      version = ">= 2.22.0"
     }
     kubectl = {
       source  = "gavinbunney/kubectl"
@@ -30,15 +23,15 @@ terraform {
     }
     random = {
       source  = "hashicorp/random"
-      version = "3.3.2"
+      version = ">= 3.3.2"
     }
     null = {
       source  = "hashicorp/null"
-      version = "3.2.2"
+      version = ">= 3.2.2"
     }
     argocd = {
       source  = "oboukili/argocd"
-      version = "6.0.3"
+      version = ">= 6.0.3"
     }
   }
 }

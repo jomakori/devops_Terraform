@@ -5,7 +5,8 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  labels: app.kubernetes.io/managed-by=Helm
+  labels: 
+    app.kubernetes.io/managed-by: Helm
   source:
     repoURL: ${gitops_repo}
     path: ${gitops_services_path}
@@ -21,27 +22,19 @@ spec:
         - name: targetRevision
           value: ${gitops_branch}
         - name: region
-          value: "${aws-region}"
+          value: "${gcp_region}"
         - name: account
-          value: "${aws-account}"
+          value: "${gcp_account}"
         - name: clusterName
-          value: "${aws-cluster_name}"
+          value: "${gcp_cluster_name}"
         - name: clusterEndpoint
-          value: "${aws-cluster_endpoint}"
-        - name: awsLoadBalancerController.serviceAccountName
-          value: "${awsloadbalancercontroller-sa}"
-        - name: externalSecrets.serviceAccountName
-          value: "${externalsecrets-sa}"
-        - name: karpenter.serviceAccountName
-          value: "${karpenter-sa}"
-        - name: karpenter.interruptionQueueName
-          value: "${karpenter-sqs_queue}"
-        - name: dbTunnel.environment.production.endpoint
-          value: "${DB_TUNNEL_PROD_DB_HOST}"
-        - name: dbTunnel.environment.staging.endpoint
-          value: "${DB_TUNNEL_STAGING_DB_HOST}"
-        - name: redis-cluster.password
-          value: "${REDIS_PW}"
+          value: "${gcp_cluster_endpoint}"
+        # Doppler Tokens for apps/envs
+        - name: cloudnativePG.creds.user
+          value: "${notes_app_pg_user}"
+        - name: cloudnativePG.creds.pw
+          value: "${notes_app_pg_pw}"
+
   destination:
     server: "https://kubernetes.default.svc"
   syncPolicy:

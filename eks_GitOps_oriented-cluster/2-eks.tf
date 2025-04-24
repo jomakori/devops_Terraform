@@ -1,14 +1,20 @@
+/* 
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ Security feature: Restrict public access to EKS endpoint                 │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+# # Grab prefix list CIDR's
+# data "aws_ec2_managed_prefix_list" "vpn" {
+#   id = "pl-123456"
+# }
+# ## Filter only the CIDR blocks
+# locals {
+#   vpn_cidrs = [for entry in data.aws_ec2_managed_prefix_list.vpn.entries : entry.cidr]
+# }
+
 #--------------------------------------------------------------------------------------------#
 #------------------------------------ Create EKS Cluster ------------------------------------#
 #--------------------------------------------------------------------------------------------#
-# Grab prefix list CIDR's
-data "aws_ec2_managed_prefix_list" "vpn" {
-  id = "pl-123456"
-}
-## Filter only the CIDR blocks
-locals {
-  vpn_cidrs = [for entry in data.aws_ec2_managed_prefix_list.vpn.entries : entry.cidr]
-}
 
 module "eks" {
   source  = "cloudposse/eks-cluster/aws"
@@ -32,7 +38,7 @@ module "eks" {
   ## Restrict EKS Cluster access: restricted external - private node traffic
   endpoint_public_access  = true
   endpoint_private_access = true
-  public_access_cidrs     = local.vpn_cidrs
+  public_access_cidrs     = ["0.0.0.0/0"] # public access allowed - restrict using: local.vpn_cidrs
 
   #------------------------------------------------------------------------------------#
   #--------------------------------- EKS Access Controls ------------------------------#
@@ -74,12 +80,12 @@ module "eks" {
   }
   # Role for Karpenter Nodes
   ## IMPORTANT: Comment out until `module.eks_blueprints_addons` has been created
-  access_entries_for_nodes = {
-    EC2_LINUX = [module.eks_blueprints_addons.karpenter.node_iam_role_arn]
-  }
+  # access_entries_for_nodes = {
+  #   EC2_LINUX = [module.eks_blueprints_addons.karpenter.node_iam_role_arn]
+  # }
 
   tags       = var.tags
-  depends_on = [module.vpc_peering]
+  depends_on = [module.vpc]
 }
 
 #--------------------------------------------------------------------------------------------------#
