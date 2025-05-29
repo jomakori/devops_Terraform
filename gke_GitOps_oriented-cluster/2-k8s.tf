@@ -1,6 +1,7 @@
 module "gke" {
-  source  = "terraform-google-modules/kubernetes-engine/google"
-  version = ">= 35.0.1"
+  source              = "terraform-google-modules/kubernetes-engine/google"
+  version             = ">= 35.0.1"
+  deletion_protection = true
 
   # Required variables
   project_id = var.project_id

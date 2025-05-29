@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: services
+  namespace: argocd
+spec:
+  project: default
+  labels: 
+    app.kubernetes.io/managed-by: Helm
+  source:
+    repoURL: ${gitops_repo}
+    path: ${gitops_services_path}
+    targetRevision: ${gitops_branch}
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: repoUrl
+          value: ${gitops_repo}
+        - name: path
+          value: ${gitops_services_path}
+        - name: targetRevision
+          value: ${gitops_branch}
+        - name: region
+          value: "${gcp_region}"
+        - name: account
+          value: "${gcp_account}"
+        - name: clusterName
+          value: "${gcp_cluster_name}"
+        - name: clusterEndpoint
+          value: "${gcp_cluster_endpoint}"
+        # Doppler Tokens for apps/envs
+        - name: grafanaCreds.admin
+          value: "${grafana_admin}"
+        - name: grafanaCreds.pw
+          value: "${grafana_pw}"
+        - name: dbOperator.creds.user
+          value: "${pg_user}"
+        - name: dbOperator.creds.pw
+          value: "${pg_pw}"
+
+  destination:
+    server: "https://kubernetes.default.svc"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - Validate=false
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
