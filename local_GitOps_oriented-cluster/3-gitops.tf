@@ -15,11 +15,9 @@ resource "kubectl_manifest" "services" {
       gitops_services_path = var.gitops_services_path
       gitops_branch        = var.gitops_branch
 
-      # GCP values
-      gcp_region           = var.region
-      gcp_account          = var.project_id
-      gcp_cluster_name     = var.name
-      gcp_cluster_endpoint = "localhost"
+      # cluster values
+      cluster_name     = var.name
+      cluster_endpoint = "localhost"
       # service values to pass into helm charts
       grafana_admin = var.GRAFANA_ADMIN
       grafana_pw    = var.GRAFANA_PW

@@ -5,7 +5,7 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  labels: 
+  labels:
     app.kubernetes.io/managed-by: Helm
   source:
     repoURL: ${gitops_repo}
@@ -21,14 +21,10 @@ spec:
           value: ${gitops_services_path}
         - name: targetRevision
           value: ${gitops_branch}
-        - name: region
-          value: "${gcp_region}"
-        - name: account
-          value: "${gcp_account}"
         - name: clusterName
-          value: "${gcp_cluster_name}"
+          value: "${cluster_name}"
         - name: clusterEndpoint
-          value: "${gcp_cluster_endpoint}"
+          value: "${cluster_endpoint}"
         # Doppler Tokens for apps/envs
         - name: grafanaCreds.admin
           value: "${grafana_admin}"

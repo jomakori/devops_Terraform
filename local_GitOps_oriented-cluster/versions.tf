@@ -36,17 +36,16 @@ terraform {
 
 # Minikube
 provider "minikube" {
-  kubernetes_version = "v1.33.1"
+  kubernetes_version = "v1.32.5"
 }
 
 
 # Helm
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     config_path = "~/.kube/config"
   }
 }
-
 # kubernetes/kubectl
 provider "kubectl" {
   config_path = "~/.kube/config"

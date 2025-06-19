@@ -1,19 +1,5 @@
 /* 
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ Project variables                                                        │
-  └──────────────────────────────────────────────────────────────────────────┘
- */
-variable "project_id" {
-  description = "Google Account/Project ID"
-  default     = "absolute-cipher-449014-p0"
-}
-variable "region" {
-  description = "GCP region for resources"
-  default     = "us-central1" # 4 azs
-}
-
-/* 
-  ┌──────────────────────────────────────────────────────────────────────────┐
   │ Workspace variables                                                      │
   └──────────────────────────────────────────────────────────────────────────┘
  */
