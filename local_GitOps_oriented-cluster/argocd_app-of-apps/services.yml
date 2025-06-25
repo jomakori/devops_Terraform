@@ -32,8 +32,10 @@ spec:
           value: "${grafana_pw}"
         - name: dbOperator.creds.user
           value: "${pg_user}"
-        - name: dbOperator.creds.pw
-          value: "${pg_pw}"
+        - name: tailscaleOperator.clientid
+          value: "${tailscale_clientid}"
+        - name: tailscaleOperator.clientsec
+          value: "${tailscale_clientsec}"
 
   destination:
     server: "https://kubernetes.default.svc"

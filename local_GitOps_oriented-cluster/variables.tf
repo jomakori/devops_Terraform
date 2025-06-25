@@ -82,3 +82,11 @@ variable "GRAFANA_PW" {
   description = "Doppler var - Grafana admin password"
   sensitive   = true
 }
+variable "TAILSCALE_CLIENTID" {
+  description = "Client ID for Tailscale"
+  sensitive   = true
+}
+variable "TAILSCALE_CLIENTSEC" {
+  description = "Client Secret for Tailscale"
+  sensitive   = true
+}
