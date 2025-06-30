@@ -26,14 +26,9 @@ variable "k8s_cidr_ranges" {
   }
 }
 
-variable "WHITELIST_K8S_ACCESS" {
-  description = "Doppler var - List of IP addresses to whitelist for access to the cluster"
-  type        = map(string)
-}
-
 /* 
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ GitOps variables                                                         │
+  │ GitOps variables - Local                                                 │
   └──────────────────────────────────────────────────────────────────────────┘
  */
 variable "gitops_repo" {
@@ -55,9 +50,20 @@ variable "gitops_services_path" {
   description = "Path to ArgoCD App manifests for Services"
   default     = "services/argocd-appset"
 }
+/* 
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ GitOps Variables - Doppler                                               │
+  |                                                                          |
+  | > Note: Use `TF_VAR_` prefix in Doppler to pass in these variables       |
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
 
-# App Access tokens to Doppler
-## Note: Use `TF_VAR_` prefix in Doppler to pass in these variables
+## Template Vars
+variable "TAILSCALE_TUNNEL" {
+  description = "URL to Tailscale Tunnel"
+}
+
+## App Vars
 variable "DOPPLER_PROD_TOKEN" {
   description = "Doppler var - App Access token to Doppler for PROD "
 }
@@ -65,15 +71,13 @@ variable "DOPPLER_STAGING_TOKEN" {
   description = "Doppler var - App Access token to Doppler for staging "
 }
 
-# Service variables
-## Note: Use `TF_VAR_` prefix in Doppler to pass in these variables
+## Service Vars
 variable "PG_USER" {
   description = "Doppler var - Postgres user for app access"
 }
 variable "PG_PW" {
   description = "Doppler var - Postgres password for app access"
   sensitive   = true
-
 }
 variable "GRAFANA_ADMIN" {
   description = "Doppler var - Grafana admin username"

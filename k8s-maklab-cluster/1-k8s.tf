@@ -1,11 +1,10 @@
 resource "minikube_cluster" "local_k8s" {
   vm              = true
-  driver          = "none"
+  driver          = "docker"
   cluster_name    = var.name
-  nodes           = 3
+  nodes           = 6
   cni             = "flannel" # Flannel provides robust pod networking for multi-node clusters
-  apiserver_ips   = ["127.0.0.1"]
-  apiserver_names = ["jmak-lab.tail2354a3.ts.net"]
+  apiserver_names = [var.TAILSCALE_TUNNEL]
   addons = [
     "ingress",
     "metrics-server",
