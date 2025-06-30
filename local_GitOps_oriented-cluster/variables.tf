@@ -5,7 +5,7 @@
  */
 variable "name" {
   description = "Namespace for workspace resources"
-  default     = "gitops-k8s-cluster"
+  default     = "maklab-cluster"
 }
 variable "subnet_cidr_ranges" {
   description = "Mapping of CIDR ranges for VPC networking"
