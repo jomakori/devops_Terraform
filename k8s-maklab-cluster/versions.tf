@@ -7,7 +7,7 @@ terraform {
     organization = "tf_jmakori"
 
     workspaces {
-      name = "local_gitops-k8s-cluster"
+      name = "k8s-maklab-cluster"
     }
   }
   required_providers {
