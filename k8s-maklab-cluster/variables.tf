@@ -86,11 +86,21 @@ variable "GRAFANA_PW" {
   description = "Doppler var - Grafana admin password"
   sensitive   = true
 }
-variable "TAILSCALE_CLIENTID" {
+variable "TAPIR_SSO_CLIENT_ID" {
   description = "Client ID for Tailscale"
   sensitive   = true
 }
-variable "TAILSCALE_CLIENTSEC" {
+variable "TAPIR_SSO_CLIENT_SECRET" {
   description = "Client Secret for Tailscale"
+  sensitive   = true
+}
+variable "MONGODB_HOST" {
+  description = "MongoDB host for service access"
+}
+variable "MONGODB_USER" {
+  description = "MongoDB user for service access"
+}
+variable "MONGODB_PW" {
+  description = "MongoDB password for service access"
   sensitive   = true
 }

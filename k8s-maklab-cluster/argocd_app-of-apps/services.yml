@@ -32,10 +32,16 @@ spec:
           value: "${grafana_pw}"
         - name: dbOperator.creds.user
           value: "${pg_user}"
-        - name: tailscaleOperator.clientid
-          value: "${tailscale_clientid}"
-        - name: tailscaleOperator.clientsec
-          value: "${tailscale_clientsec}"
+        - name: mongoDBCreds.host
+          value: "${mongodb_host}"
+        - name: mongoDBCreds.user
+          value: ${mongodb_user}
+        - name: mongoDBCreds.pw
+          value: ${mongodb_pw}
+        - name: tapir.sso_clientID
+          value: "${tapir_sso_client_id}"
+        - name: tapir.sso_clientSecret
+          value: "${tapir_sso_client_secret}"
 
   destination:
     server: "https://kubernetes.default.svc"

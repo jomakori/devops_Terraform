@@ -1,8 +1,11 @@
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Configure ArgoCD Global Settings                                         │
+# │ Configure ArgoCD Controller                                              │
 # └──────────────────────────────────────────────────────────────────────────┘
 controller:
-  enableStatefulSet: true
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Configure ArgoCD ConfigMap                                               │
@@ -13,7 +16,6 @@ configs:
   cm:
     create: true
     exec.enabled: true      # Enable terminal: https://argo-cd.readthedocs.io/en/stable/operator-manual/web_based_terminal/
-
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Configure ArgoCD Server Settings                                         │
 # └──────────────────────────────────────────────────────────────────────────┘
@@ -21,10 +23,12 @@ server:
   autoscaling:
     enabled: true
     minReplicas: 1
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 70
   resources:
     requests:
-      cpu: 128m
-      memory: 512Mi
+      cpu: "500m"
+      memory: "512Mi"
   ingressGrpc:
     enabled: false # not needed
   ingress:
@@ -33,11 +37,9 @@ server:
     labels:
       app: argocd-server
     type: NodePort
-  repoServer:
-    autoscaling:
-      enabled: true
-      minReplicas: 1
-    resources:
-      requests:
-        cpu: 128m
-        memory: 64Mi
+repoServer:
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 70

@@ -19,12 +19,15 @@ resource "kubectl_manifest" "services" {
       cluster_name     = var.name
       cluster_endpoint = "localhost"
       # service values to pass into helm charts
-      grafana_admin       = var.GRAFANA_ADMIN
-      grafana_pw          = var.GRAFANA_PW
-      pg_user             = var.PG_USER
-      pg_pw               = var.PG_PW
-      tailscale_clientid  = var.TAILSCALE_CLIENTID
-      tailscale_clientsec = var.TAILSCALE_CLIENTSEC
+      grafana_admin           = var.GRAFANA_ADMIN
+      grafana_pw              = var.GRAFANA_PW
+      pg_user                 = var.PG_USER
+      pg_pw                   = var.PG_PW
+      mongodb_host            = var.MONGODB_HOST
+      mongodb_user            = var.MONGODB_USER
+      mongodb_pw              = var.MONGODB_PW
+      tapir_sso_client_id     = var.TAPIR_SSO_CLIENT_ID
+      tapir_sso_client_secret = var.TAPIR_SSO_CLIENT_SECRET
   })
   force_new  = true # re-create on changes
   depends_on = [helm_release.argocd]

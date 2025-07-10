@@ -1,0 +1,158 @@
+diff --git a/k8s-maklab-cluster/1-k8s.tf b/k8s-maklab-cluster/1-k8s.tf
+index 1896233..e9a2d11 100644
+--- a/k8s-maklab-cluster/1-k8s.tf
++++ b/k8s-maklab-cluster/1-k8s.tf
+@@ -2,12 +2,12 @@ resource "minikube_cluster" "local_k8s" {
+   vm              = true
+   driver          = "docker"
+   cluster_name    = var.name
+-  nodes           = 6
++  nodes           = 4
+   cni             = "flannel" # Flannel provides robust pod networking for multi-node clusters
+-  apiserver_names = [var.TAILSCALE_TUNNEL]
++  apiserver_names = [ var.TAILSCALE_TUNNEL ]
+   addons = [
++    "csi-hostpath-driver",
+     "ingress",
+-    "metrics-server",
+     "storage-provisioner",
+     "volumesnapshots"
+   ]
+diff --git a/k8s-maklab-cluster/3-gitops.tf b/k8s-maklab-cluster/3-gitops.tf
+index 5dc8db4..2bc4f5d 100644
+--- a/k8s-maklab-cluster/3-gitops.tf
++++ b/k8s-maklab-cluster/3-gitops.tf
+@@ -19,12 +19,15 @@ resource "kubectl_manifest" "services" {
+       cluster_name     = var.name
+       cluster_endpoint = "localhost"
+       # service values to pass into helm charts
+-      grafana_admin       = var.GRAFANA_ADMIN
+-      grafana_pw          = var.GRAFANA_PW
+-      pg_user             = var.PG_USER
+-      pg_pw               = var.PG_PW
+-      tailscale_clientid  = var.TAILSCALE_CLIENTID
+-      tailscale_clientsec = var.TAILSCALE_CLIENTSEC
++      grafana_admin           = var.GRAFANA_ADMIN
++      grafana_pw              = var.GRAFANA_PW
++      pg_user                 = var.PG_USER
++      pg_pw                   = var.PG_PW
++      mongodb_host            = var.MONGODB_HOST
++      mongodb_user            = var.MONGODB_USER
++      mongodb_pw              = var.MONGODB_PW
++      tapir_sso_client_id     = var.TAPIR_SSO_CLIENT_ID
++      tapir_sso_client_secret = var.TAPIR_SSO_CLIENT_SECRET
+   })
+   force_new  = true # re-create on changes
+   depends_on = [helm_release.argocd]
+diff --git a/k8s-maklab-cluster/argocd_app-of-apps/services.yml b/k8s-maklab-cluster/argocd_app-of-apps/services.yml
+index 92195f2..abcdb24 100644
+--- a/k8s-maklab-cluster/argocd_app-of-apps/services.yml
++++ b/k8s-maklab-cluster/argocd_app-of-apps/services.yml
+@@ -32,10 +32,16 @@ spec:
+           value: "${grafana_pw}"
+         - name: dbOperator.creds.user
+           value: "${pg_user}"
+-        - name: tailscaleOperator.clientid
+-          value: "${tailscale_clientid}"
+-        - name: tailscaleOperator.clientsec
+-          value: "${tailscale_clientsec}"
++        - name: mongoDBCreds.host
++          value: "${mongodb_host}"
++        - name: mongoDBCreds.user
++          value: ${mongodb_user}
++        - name: mongoDBCreds.pw
++          value: ${mongodb_pw}
++        - name: tapir.sso_clientID
++          value: "${tapir_sso_client_id}"
++        - name: tapir.sso_clientSecret
++          value: "${tapir_sso_client_secret}"
+ 
+   destination:
+     server: "https://kubernetes.default.svc"
+diff --git a/k8s-maklab-cluster/helm/argocd-values.yaml b/k8s-maklab-cluster/helm/argocd-values.yaml
+index 81fb10d..9767799 100644
+--- a/k8s-maklab-cluster/helm/argocd-values.yaml
++++ b/k8s-maklab-cluster/helm/argocd-values.yaml
+@@ -1,8 +1,11 @@
+ # ┌──────────────────────────────────────────────────────────────────────────┐
+-# │ Configure ArgoCD Global Settings                                         │
++# │ Configure ArgoCD Controller                                              │
+ # └──────────────────────────────────────────────────────────────────────────┘
+ controller:
+-  enableStatefulSet: true
++  resources:
++    requests:
++      cpu: "500m"
++      memory: "512Mi"
+ 
+ # ┌──────────────────────────────────────────────────────────────────────────┐
+ # │ Configure ArgoCD ConfigMap                                               │
+@@ -13,7 +16,6 @@ configs:
+   cm:
+     create: true
+     exec.enabled: true      # Enable terminal: https://argo-cd.readthedocs.io/en/stable/operator-manual/web_based_terminal/
+-
+ # ┌──────────────────────────────────────────────────────────────────────────┐
+ # │ Configure ArgoCD Server Settings                                         │
+ # └──────────────────────────────────────────────────────────────────────────┘
+@@ -21,10 +23,12 @@ server:
+   autoscaling:
+     enabled: true
+     minReplicas: 1
++    targetCPUUtilizationPercentage: 70
++    targetMemoryUtilizationPercentage: 70
+   resources:
+     requests:
+-      cpu: 128m
+-      memory: 512Mi
++      cpu: "500m"
++      memory: "512Mi"
+   ingressGrpc:
+     enabled: false # not needed
+   ingress:
+@@ -33,11 +37,9 @@ server:
+     labels:
+       app: argocd-server
+     type: NodePort
+-  repoServer:
+-    autoscaling:
+-      enabled: true
+-      minReplicas: 1
+-    resources:
+-      requests:
+-        cpu: 128m
+-        memory: 64Mi
++repoServer:
++  autoscaling:
++    enabled: true
++    minReplicas: 1
++    targetCPUUtilizationPercentage: 70
++    targetMemoryUtilizationPercentage: 70
+diff --git a/k8s-maklab-cluster/variables.tf b/k8s-maklab-cluster/variables.tf
+index 75b1ac7..14dad30 100644
+--- a/k8s-maklab-cluster/variables.tf
++++ b/k8s-maklab-cluster/variables.tf
+@@ -86,11 +86,21 @@ variable "GRAFANA_PW" {
+   description = "Doppler var - Grafana admin password"
+   sensitive   = true
+ }
+-variable "TAILSCALE_CLIENTID" {
++variable "TAPIR_SSO_CLIENT_ID" {
+   description = "Client ID for Tailscale"
+   sensitive   = true
+ }
+-variable "TAILSCALE_CLIENTSEC" {
++variable "TAPIR_SSO_CLIENT_SECRET" {
+   description = "Client Secret for Tailscale"
+   sensitive   = true
+ }
++variable "MONGODB_HOST" {
++  description = "MongoDB host for service access"
++}
++variable "MONGODB_USER" {
++  description = "MongoDB user for service access"
++}
++variable "MONGODB_PW" {
++  description = "MongoDB password for service access"
++  sensitive   = true
++}
