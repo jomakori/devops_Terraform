@@ -13,6 +13,6 @@ resource "helm_release" "argocd" {
   repository = "https://argoproj.github.io/argo-helm"
   values     = [file("helm/argocd-values.yaml")]
 
-  depends_on = [minikube_cluster.local_k8s]
+  depends_on = [minikube_cluster.maklab_cluster]
 }
 

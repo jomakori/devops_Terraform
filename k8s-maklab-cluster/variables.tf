@@ -1,29 +1,38 @@
 /* 
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ Workspace variables                                                      │
+  │ Cluster variables                                                        │
   └──────────────────────────────────────────────────────────────────────────┘
  */
 variable "name" {
   description = "Namespace for workspace resources"
   default     = "maklab-cluster"
 }
-variable "subnet_cidr_ranges" {
-  description = "Mapping of CIDR ranges for VPC networking"
-  type        = map(string)
-  default = {
-    "subnet-a" = "10.0.0.0/16"
-    "subnet-b" = "10.1.0.0/16"
-  }
+
+variable "kubernetes_version" {
+  description = "Kubernetes version to use for k8s cluster"
+  default     = "v1.32.5"
+}
+
+variable "worker_nodes" {
+  description = "Number of machine nodes in k8s cluster"
+  type        = number
+  default     = 4
+
 }
 
 variable "k8s_cidr_ranges" {
   description = "Mapping of CIDR ranges for K8s pods + services"
   type        = map(any)
   default = {
-    "pods"          = "192.168.0.0/16"
-    "services"      = "192.169.0.0/16"
-    "control-plane" = "172.16.0.0/28"
+    "pods"     = "10.0.0.0/16"
+    "services" = "127.0.0.0/16"
   }
+}
+
+variable "k8s_config_path" {
+  description = "Kubernetes config file path"
+  type        = string
+  default     = "~/.kube/config"
 }
 
 /* 

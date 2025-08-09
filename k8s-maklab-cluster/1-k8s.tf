@@ -1,14 +1,20 @@
-resource "minikube_cluster" "local_k8s" {
-  vm              = true
-  driver          = "docker"
+resource "minikube_cluster" "maklab_cluster" {
+  # Cluster Configuration
+  apiserver_names = [var.TAILSCALE_TUNNEL]
   cluster_name    = var.name
-  nodes           = 4
-  cni             = "flannel" # Flannel provides robust pod networking for multi-node clusters
-  apiserver_names = [ var.TAILSCALE_TUNNEL ]
+  cni             = "flannel" # robust pod networking for multi-node clusters
+  driver          = "docker"
+  # Node Configuration
+  cpus   = 4
+  memory = 2048
+  nodes  = var.worker_nodes
+
+
   addons = [
     "csi-hostpath-driver",
     "ingress",
-    "storage-provisioner",
+    "metrics-server",
+    "storage-provisioner-rancher",
     "volumesnapshots"
   ]
 }
