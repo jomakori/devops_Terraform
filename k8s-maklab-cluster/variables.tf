@@ -9,14 +9,14 @@ variable "name" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version to use for k8s cluster"
-  default     = "v1.32.5"
+  description = "Kubernetes version to use for k8s cluster. For latest version, run `minikube config defaults kubernetes-version`"
+  default     = "v1.33.1"
 }
 
 variable "worker_nodes" {
   description = "Number of machine nodes in k8s cluster"
   type        = number
-  default     = 4
+  default     = 3
 
 }
 

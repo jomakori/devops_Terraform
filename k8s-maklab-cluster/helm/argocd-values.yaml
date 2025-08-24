@@ -12,10 +12,10 @@ controller:
 # └──────────────────────────────────────────────────────────────────────────┘
 configs:
   params:
-    server.insecure: true   # Fixes redirect issue - https://github.com/argoproj/argo-cd/issues/2953
+    server.insecure: true # for local forward
   cm:
     create: true
-    exec.enabled: true      # Enable terminal: https://argo-cd.readthedocs.io/en/stable/operator-manual/web_based_terminal/
+    exec.enabled: true # Enable terminal: https://argo-cd.readthedocs.io/en/stable/operator-manual/web_based_terminal/
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Configure ArgoCD Server Settings                                         │
 # └──────────────────────────────────────────────────────────────────────────┘
@@ -25,10 +25,6 @@ server:
     minReplicas: 1
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 70
-  resources:
-    requests:
-      cpu: "500m"
-      memory: "512Mi"
   ingressGrpc:
     enabled: false # not needed
   ingress:
