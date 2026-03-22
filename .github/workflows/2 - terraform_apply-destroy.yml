@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0
           ref: refs/pull/${{ github.event.issue.number }}/head # to use pr branch
 
-      - name: Detect Terraform Workspace Changes
+      - name: Check - Detect Workspace Changes
         id: detect
         run: |
           # check - Only allow changes on a single workspace
@@ -77,26 +77,29 @@ jobs:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ env.DESTROY == 'true' && 'main' || format('refs/pull/{0}/head', env.PR_NUM) }}
 
-      - name: Generate Atmos Configuration
+      - name: Atmos - Generate Configuration
+        id: atmos-config
         run: |
           bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
+          STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
+          echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
 
       - name: Install Doppler cli
         uses: dopplerhq/cli-action@master
 
-      - name: Fetch Doppler Secrets
+      - name: Doppler - Fetch Secrets
         id: doppler
         uses: dopplerhq/secrets-fetch-action@main
         with:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
-      - name: Setup AWS Credentials
-        uses: aws-actions/configure-aws-credentials@main
-        with:
-          aws-region: ${{ env.DEFAULT_AWS_REGION }}
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+      # - name: Setup AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@main
+      #   with:
+      #     aws-region: ${{ env.DEFAULT_AWS_REGION }}
+      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -117,9 +120,10 @@ jobs:
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
           fail-on-cache-miss: true
 
-      - name: Verify Plan Cache Exists
+      - name: Check - Validate Terraform Plan Cache
         run: |
-          if [ ! -d "stacks/${{ env.WORKSPACE | replace('_', '-') }}/.terraform" ]; then
+          STACK_NAME="${{ steps.atmos-config.outputs.stack_name }}"
+          if [ ! -d "stacks/${STACK_NAME}/.terraform" ]; then
             echo "❌ ERROR: Terraform plan cache expired or not found"
             echo ""
             echo "Plan cache for workspace '${{ env.WORKSPACE }}' with commit '${{ github.sha }}' is missing."
@@ -138,20 +142,20 @@ jobs:
           fi
           echo "✅ Plan cache found for workspace: ${{ env.WORKSPACE }}"
 
-      - name: Terraform Apply - ${{ env.WORKSPACE }} (conditional)
+      - name: Terraform Apply - ${{ env.WORKSPACE }}
         if: env.DESTROY == 'false'
         id: terraform-apply
         uses: cloudposse/github-action-atmos-terraform-apply@v5
         with:
-          component: ${{ env.WORKSPACE | replace('_', '-') }}
-          stack: ${{ env.WORKSPACE | replace('_', '-') }}
+          component: ${{ steps.atmos-config.outputs.stack_name }}
+          stack: ${{ steps.atmos-config.outputs.stack_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Terraform Destroy - ${{ env.WORKSPACE }} (conditional)
+      - name: Terraform Destroy - ${{ env.WORKSPACE }}
         if: env.DESTROY == 'true'
         id: terraform-destroy
         uses: cloudposse/github-action-atmos-terraform-destroy@v5
         with:
-          component: ${{ env.WORKSPACE | replace('_', '-') }}
-          stack: ${{ env.WORKSPACE | replace('_', '-') }}
+          component: ${{ steps.atmos-config.outputs.stack_name }}
+          stack: ${{ steps.atmos-config.outputs.stack_name }}
           token: ${{ secrets.GITHUB_TOKEN }}

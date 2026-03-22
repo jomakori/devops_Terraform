@@ -34,7 +34,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect Terraform Workspace Changes
+      - name: Check - Detect Workspace Changes
         id: detect
         run:  |
           # check - Only allow changes on a single workspace
@@ -91,13 +91,16 @@ jobs:
           ref: ${{ (env.DESTROY == 'true' && 'main') || github.head_ref }}
 
       - name: Atmos - Generate Configuration
+        id: atmos-config
         run: |
           bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
+          STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
+          echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
 
       - name: Install Doppler cli
         uses: dopplerhq/cli-action@master
 
-      - name: Fetch Doppler Secrets
+      - name: Doppler - Fetch Secrets
         id: doppler
         uses: dopplerhq/secrets-fetch-action@main
         with:
@@ -124,20 +127,20 @@ jobs:
         env:
           CACHE_SKIP: ${{ env.FORCE_REGEN == 'true' }}
 
-      - name: Terraform Plan - ${{ env.WORKSPACE }} - Apply (conditional)
+      - name: Terraform Plan - ${{ env.WORKSPACE }}
         if: env.DESTROY == 'false'
         id: terraform-plan-apply
         uses: cloudposse/github-action-atmos-terraform-plan@v5
         with:
-          component: ${{ env.WORKSPACE | replace('_', '-') }}
-          stack: ${{ env.WORKSPACE | replace('_', '-') }}
+          component: ${{ steps.atmos-config.outputs.stack_name }}
+          stack: ${{ steps.atmos-config.outputs.stack_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
+      - name: Terraform Plan Destroy - ${{ env.WORKSPACE }}
         if: env.DESTROY == 'true'
         id: terraform-plan-destroy
         uses: cloudposse/github-action-atmos-terraform-plan@v5
         with:
-          component: ${{ env.WORKSPACE | replace('_', '-') }}
-          stack: ${{ env.WORKSPACE | replace('_', '-') }}
+          component: ${{ steps.atmos-config.outputs.stack_name }}
+          stack: ${{ steps.atmos-config.outputs.stack_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
