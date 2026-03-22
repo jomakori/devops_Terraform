@@ -1,0 +1,62 @@
+name: Tailscale Key Rotation
+on:
+  schedule:
+    # Run every 85 days at 00:00 UTC
+    - cron: '0 0 */85 * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  rotate-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Setup Doppler CLI
+        run: |
+          curl -Ls https://cli.doppler.com/install.sh | sh -s -- --yes
+          echo "$HOME/.doppler/bin" >> $GITHUB_PATH
+
+      - name: Configure Doppler authentication
+        run: |
+          doppler configure set token ${{ secrets.DOPPLER_TOKEN }}
+
+      - name: Initialize Terraform
+        working-directory: oci_maklab_base0
+        run: doppler run --project devops --config ci -- terraform init
+
+      - name: Rotate Tailscale key
+        id: rotate
+        working-directory: oci_maklab_base0
+        run: |
+          set -e
+          echo "Rotating Tailscale auth key..."
+          doppler run --project devops --config ci -- terraform apply -target=tailscale_key.vm_auth_key -auto-approve
+          echo "✅ Tailscale key rotated successfully"
+          
+          # Get the new key ID for reference
+          KEY_ID=$(doppler run --project devops --config ci -- terraform output -json | jq -r '.tailscale_auth_key_id.value')
+          echo "New key ID: $KEY_ID"
+          echo "key_id=$KEY_ID" >> $GITHUB_OUTPUT
+
+      - name: Success annotation
+        if: success()
+        run: |
+          echo "::notice title=Tailscale Key Rotated::Tailscale auth key has been rotated. Please reboot the VM to apply the new key."
+          echo "Rotation completed at $(date -u)"
+          echo "Next rotation scheduled in 85 days"
+
+      - name: Failure annotation
+        if: failure()
+        run: |
+          echo "::error title=Tailscale Key Rotation Failed::Failed to rotate Tailscale auth key. Check logs for details."
+          echo "::warning title=Emergency Access::Use OCI Serial Console to manually reconnect:"
+          echo "1. Navigate to OCI Console → Compute → Instances"
+          echo "2. Select the VM instance"
+          echo "3. Click 'Serial Console Connection'"
+          echo "4. Run: sudo tailscale up --authkey=\$(doppler secrets get TAILSCALE_AUTH_KEY --plain)"
