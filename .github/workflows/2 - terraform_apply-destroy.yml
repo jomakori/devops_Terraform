@@ -147,8 +147,9 @@ jobs:
         with:
           component: ${{ env.WORKSPACE }}
           stack: ${{ env.WORKSPACE }}
-          atmos-config-path: ./atmos/conf
           token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ATMOS_CLI_CONFIG_PATH: ${{ github.workspace }}/atmos/conf
 
       - name: Terraform Destroy - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'true'
@@ -157,5 +158,6 @@ jobs:
         with:
           component: ${{ env.WORKSPACE }}
           stack: ${{ env.WORKSPACE }}
-          atmos-config-path: ./atmos/conf
           token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ATMOS_CLI_CONFIG_PATH: ${{ github.workspace }}/atmos/conf

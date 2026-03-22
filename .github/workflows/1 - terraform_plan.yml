@@ -132,6 +132,7 @@ jobs:
       - name: Generate Atmos Configuration
         run: |
           bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}" "."
+          echo "ATMOS_CLI_CONFIG_PATH=$(pwd)/atmos/conf" >> $GITHUB_ENV
 
       - name: Terraform Plan - ${{ env.WORKSPACE }} - Apply (conditional)
         if: env.DESTROY == 'false'
@@ -140,8 +141,9 @@ jobs:
         with:
           component: ${{ env.WORKSPACE }}
           stack: ${{ env.WORKSPACE }}
-          atmos-config-path: ./atmos/conf
           token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ATMOS_CLI_CONFIG_PATH: ${{ github.workspace }}/atmos/conf
 
       - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'true'
@@ -150,8 +152,9 @@ jobs:
         with:
           component: ${{ env.WORKSPACE }}
           stack: ${{ env.WORKSPACE }}
-          atmos-config-path: ./atmos/conf
           token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ATMOS_CLI_CONFIG_PATH: ${{ github.workspace }}/atmos/conf
 
       - name: Cache Plan Output
         if: always()
