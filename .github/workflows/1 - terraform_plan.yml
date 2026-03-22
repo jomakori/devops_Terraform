@@ -76,7 +76,7 @@ jobs:
     if: needs.detect-changes.outputs.changed != '' && needs.detect-changes.outputs.destroy != ''
 
     runs-on: ubuntu-latest
-    name: Plan Changes
+    name: Planned Changes
     needs: detect-changes
     env:
       WORKSPACE: ${{ needs.detect-changes.outputs.changed }}
@@ -96,7 +96,7 @@ jobs:
           terraform_version: latest
 
       - name: Setup Atmos
-        uses: cloudposse/github-action-setup-atmos@v2
+        uses: cloudposse/github-action-setup-atmos@v3
         with:
           atmos-version: latest
 
@@ -136,7 +136,7 @@ jobs:
       - name: Terraform Plan - ${{ env.WORKSPACE }} - Apply (conditional)
         if: env.DESTROY == 'false'
         id: terraform-plan-apply
-        uses: cloudposse/github-action-atmos-terraform-plan@v2
+        uses: cloudposse/github-action-atmos-terraform-plan@v5
         with:
           component: ${{ env.WORKSPACE }}
           stack: ${{ env.WORKSPACE }}
@@ -148,7 +148,7 @@ jobs:
       - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'true'
         id: terraform-plan-destroy
-        uses: cloudposse/github-action-atmos-terraform-plan@v2
+        uses: cloudposse/github-action-atmos-terraform-plan@v5
         with:
           component: ${{ env.WORKSPACE }}
           stack: ${{ env.WORKSPACE }}
