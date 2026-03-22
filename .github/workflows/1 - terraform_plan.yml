@@ -90,6 +90,20 @@ jobs:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ (env.DESTROY == 'true' && 'main') || github.head_ref }}
 
+      - name: Atmos - Generate Configuration
+        run: |
+          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
+
+      - name: Install Doppler cli
+        uses: dopplerhq/cli-action@master
+
+      - name: Fetch Doppler Secrets
+        id: doppler
+        uses: dopplerhq/secrets-fetch-action@main
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          inject-env-vars: true
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -104,62 +118,26 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            atmos/.terraform
-            atmos/stacks/.terraform
-            atmos/components/terraform/**/.terraform
-            tfplan-${{ env.WORKSPACE }}.json
+            stacks/.terraform
+            stacks/**/.terraform
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
         env:
           CACHE_SKIP: ${{ env.FORCE_REGEN == 'true' }}
-
-      - name: Install Doppler cli
-        uses: dopplerhq/cli-action@master
-
-      - name: Fetch Doppler Secrets
-        id: doppler
-        uses: dopplerhq/secrets-fetch-action@main
-        with:
-          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
-          inject-env-vars: true
-
-      # - name: Setup AWS Credentials
-      #   uses: aws-actions/configure-aws-credentials@main
-      #   with:
-      #     aws-region: ${{ env.DEFAULT_AWS_REGION }}
-      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-
-      - name: Generate Atmos Configuration
-        run: |
-          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}" "."
-          echo "ATMOS_CLI_CONFIG_PATH=$(pwd)/atmos/conf" >> $GITHUB_ENV
 
       - name: Terraform Plan - ${{ env.WORKSPACE }} - Apply (conditional)
         if: env.DESTROY == 'false'
         id: terraform-plan-apply
         uses: cloudposse/github-action-atmos-terraform-plan@v5
         with:
-          component: ${{ env.WORKSPACE }}
-          stack: ${{ env.WORKSPACE }}
+          component: ${{ env.WORKSPACE | replace('_', '-') }}
+          stack: ${{ env.WORKSPACE | replace('_', '-') }}
           token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          ATMOS_CLI_CONFIG_PATH: ${{ github.workspace }}/atmos/conf
 
       - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'true'
         id: terraform-plan-destroy
         uses: cloudposse/github-action-atmos-terraform-plan@v5
         with:
-          component: ${{ env.WORKSPACE }}
-          stack: ${{ env.WORKSPACE }}
+          component: ${{ env.WORKSPACE | replace('_', '-') }}
+          stack: ${{ env.WORKSPACE | replace('_', '-') }}
           token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          ATMOS_CLI_CONFIG_PATH: ${{ github.workspace }}/atmos/conf
-
-      - name: Cache Plan Output
-        if: always()
-        run: |
-          # Save plan output for apply workflow
-          if [ -f "tfplan-${{ env.WORKSPACE }}.json" ]; then
-            echo "Plan cached for workspace: ${{ env.WORKSPACE }}"
-          fi

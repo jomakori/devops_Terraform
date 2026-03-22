@@ -1,14 +1,14 @@
 #!/bin/bash
 set -e
 
-# Script to generate minimal Atmos configuration at runtime
-# Usage: ./generate-atmos-config.sh <workspace-name> [output-dir]
+# Script to generate Atmos configuration at runtime
+# Usage: ./generate-atmos-config.sh <workspace-name>
 # 
-# This script creates a minimal Atmos config that wraps existing Terraform workspaces
-# without modifying the workspace structure. The config is generated at runtime only.
+# This script creates the Atmos configuration structure that wraps existing Terraform workspaces
+# It dynamically detects required variables from each workspace's variables.tf file
+# Configuration is generated at repository root in the stacks/ directory
 
 WORKSPACE="${1:?Workspace name required}"
-OUTPUT_DIR="${2:-.}"
 
 # Validate workspace exists
 if [ ! -d "$WORKSPACE" ]; then
@@ -16,20 +16,34 @@ if [ ! -d "$WORKSPACE" ]; then
     exit 1
 fi
 
-# Create Atmos config directory structure
-mkdir -p "$OUTPUT_DIR/atmos/conf"
-mkdir -p "$OUTPUT_DIR/atmos/stacks"
+# Extract required variables from workspace's variables.tf
+extract_variables() {
+    local workspace_dir="$1"
+    local vars_file="${workspace_dir}/variables.tf"
+    
+    if [ ! -f "$vars_file" ]; then
+        echo "Error: variables.tf not found in $workspace_dir"
+        exit 1
+    fi
+    
+    # Extract variable names (lines with 'variable "...')
+    grep -oP 'variable "\K[^"]+' "$vars_file" || true
+}
 
-# Generate atmos.yaml (root configuration)
-cat > "$OUTPUT_DIR/atmos/conf/atmos.yaml" << 'EOF'
-# Minimal Atmos configuration generated at runtime
-# This wraps existing Terraform workspaces without modifying their structure
+# Get all variables from the workspace
+VARIABLES=$(extract_variables "$WORKSPACE")
+
+# Create Atmos root configuration (if it doesn't exist)
+if [ ! -f "atmos.yaml" ]; then
+    cat > atmos.yaml << 'EOF'
+# Atmos Configuration
+# Reference: https://atmos.tools/cli/configuration
 
 base_path: "."
 
 components:
   terraform:
-    base_path: "components/terraform"
+    base_path: "stacks"
     apply_auto_approve: false
     deploy_run_init: true
     init_run_terraform_fmt_check: false
@@ -45,20 +59,21 @@ stacks:
 logs:
   level: "info"
 
-# Atmos CLI configuration
 cli:
-  # Disable interactive prompts in CI/CD
   interactive: false
-  # Use colors in output
   colors: true
 EOF
+    echo "✅ Created atmos.yaml"
+fi
+
+# Create stacks directory
+mkdir -p stacks
 
 # Generate stack configuration for the workspace
-# The stack references the workspace directory as a Terraform component
 STACK_NAME=$(echo "$WORKSPACE" | tr '/' '-')
 
-cat > "$OUTPUT_DIR/atmos/stacks/${STACK_NAME}.yaml" << EOF
-# Auto-generated stack configuration for workspace: $WORKSPACE
+cat > "stacks/${STACK_NAME}.yaml" << EOF
+# Stack configuration for workspace: $WORKSPACE
 
 components:
   terraform:
@@ -68,21 +83,34 @@ components:
         description: "Terraform workspace: $WORKSPACE"
       vars: {}
       backend:
-        s3:
-          encrypt: true
-          dynamodb_table: "terraform-locks"
+        cloud:
+          organization: "tf_jmakori"
+          workspaces:
+            name: "${STACK_NAME}"
 EOF
 
-# Generate component configuration that references the workspace directory
-mkdir -p "$OUTPUT_DIR/atmos/components/terraform/${STACK_NAME}"
+echo "✅ Created stacks/${STACK_NAME}.yaml"
 
-cat > "$OUTPUT_DIR/atmos/components/terraform/${STACK_NAME}/main.tf" << EOF
-# This component wraps the workspace directory: $WORKSPACE
-# All Terraform code is in the workspace directory itself
+# Create component directory
+mkdir -p "stacks/${STACK_NAME}"
 
-# Import workspace variables and outputs
+# Generate component main.tf that references the workspace directory
+# Build the variable passing section dynamically
+VAR_PASSING=""
+for var in $VARIABLES; do
+    VAR_PASSING="${VAR_PASSING}  ${var} = var.${var}
+"
+done
+
+cat > "stacks/${STACK_NAME}/main.tf" << EOF
+# Component wrapper for $WORKSPACE workspace
+# This references the actual Terraform code in the workspace directory
+
 module "workspace" {
-  source = "../../../${WORKSPACE}"
+  source = "../../${WORKSPACE}"
+  
+  # Pass variables from workspace
+${VAR_PASSING}
 }
 
 # Re-export workspace outputs
@@ -92,40 +120,42 @@ output "workspace_outputs" {
 }
 EOF
 
-# Generate terraform.tfvars.json for the component
-cat > "$OUTPUT_DIR/atmos/components/terraform/${STACK_NAME}/terraform.tfvars.json" << EOF
-{
-  "workspace_name": "${WORKSPACE}"
-}
+echo "✅ Created stacks/${STACK_NAME}/main.tf"
+
+# Generate component variables.tf dynamically based on workspace variables
+# Extract variable definitions from workspace's variables.tf
+VAR_DEFINITIONS=""
+while IFS= read -r line; do
+    VAR_DEFINITIONS="${VAR_DEFINITIONS}${line}
+"
+done < <(sed -n '/^variable/,/^}/p' "${WORKSPACE}/variables.tf")
+
+cat > "stacks/${STACK_NAME}/variables.tf" << EOF
+# Variables for component
+# These are automatically extracted from the workspace's variables.tf
+
+${VAR_DEFINITIONS}
 EOF
 
-# Generate versions.tf for the component
-cat > "$OUTPUT_DIR/atmos/components/terraform/${STACK_NAME}/versions.tf" << EOF
+echo "✅ Created stacks/${STACK_NAME}/variables.tf"
+
+# Generate component versions.tf
+cat > "stacks/${STACK_NAME}/versions.tf" << 'EOF'
 terraform {
   required_version = ">= 1.0"
-  
-  # Backend configuration will be auto-generated by Atmos
-  # or use the workspace's existing backend configuration
 }
 EOF
 
-# Create a symlink or reference to the workspace's terraform files
-# This allows Atmos to work with the existing workspace structure
-cat > "$OUTPUT_DIR/atmos/components/terraform/${STACK_NAME}/workspace.tf" << EOF
-# Reference to workspace: $WORKSPACE
-# The actual Terraform code is in the workspace directory
+echo "✅ Created stacks/${STACK_NAME}/versions.tf"
 
-# This file serves as a bridge between Atmos and the workspace
-# Atmos will execute terraform commands in this component directory
-# which will use the workspace's configuration
-EOF
-
+echo ""
 echo "✅ Atmos configuration generated successfully"
 echo "   Workspace: $WORKSPACE"
 echo "   Stack: ${STACK_NAME}"
-echo "   Config directory: $OUTPUT_DIR/atmos"
+echo "   Config directory: stacks/${STACK_NAME}/"
+echo "   Variables detected: $(echo $VARIABLES | wc -w)"
 echo ""
 echo "Generated files:"
-echo "  - $OUTPUT_DIR/atmos/conf/atmos.yaml"
-echo "  - $OUTPUT_DIR/atmos/stacks/${STACK_NAME}.yaml"
-echo "  - $OUTPUT_DIR/atmos/components/terraform/${STACK_NAME}/"
+echo "  - atmos.yaml"
+echo "  - stacks/${STACK_NAME}.yaml"
+echo "  - stacks/${STACK_NAME}/"

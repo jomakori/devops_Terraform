@@ -77,6 +77,10 @@ jobs:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ env.DESTROY == 'true' && 'main' || format('refs/pull/{0}/head', env.PR_NUM) }}
 
+      - name: Generate Atmos Configuration
+        run: |
+          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
+
       - name: Install Doppler cli
         uses: dopplerhq/cli-action@master
 
@@ -94,10 +98,6 @@ jobs:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Generate Atmos Configuration
-        run: |
-          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}" "."
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -112,16 +112,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            atmos/.terraform
-            atmos/stacks/.terraform
-            atmos/components/terraform/**/.terraform
-            tfplan-${{ env.WORKSPACE }}.json
+            stacks/.terraform
+            stacks/**/.terraform
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
           fail-on-cache-miss: true
 
       - name: Verify Plan Cache Exists
         run: |
-          if [ ! -f "tfplan-${{ env.WORKSPACE }}.json" ]; then
+          if [ ! -d "stacks/${{ env.WORKSPACE | replace('_', '-') }}/.terraform" ]; then
             echo "❌ ERROR: Terraform plan cache expired or not found"
             echo ""
             echo "Plan cache for workspace '${{ env.WORKSPACE }}' with commit '${{ github.sha }}' is missing."
@@ -145,19 +143,15 @@ jobs:
         id: terraform-apply
         uses: cloudposse/github-action-atmos-terraform-apply@v5
         with:
-          component: ${{ env.WORKSPACE }}
-          stack: ${{ env.WORKSPACE }}
+          component: ${{ env.WORKSPACE | replace('_', '-') }}
+          stack: ${{ env.WORKSPACE | replace('_', '-') }}
           token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          ATMOS_CLI_CONFIG_PATH: ${{ github.workspace }}/atmos/conf
 
       - name: Terraform Destroy - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'true'
         id: terraform-destroy
         uses: cloudposse/github-action-atmos-terraform-destroy@v5
         with:
-          component: ${{ env.WORKSPACE }}
-          stack: ${{ env.WORKSPACE }}
+          component: ${{ env.WORKSPACE | replace('_', '-') }}
+          stack: ${{ env.WORKSPACE | replace('_', '-') }}
           token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          ATMOS_CLI_CONFIG_PATH: ${{ github.workspace }}/atmos/conf
