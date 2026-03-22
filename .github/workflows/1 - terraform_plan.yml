@@ -111,7 +111,7 @@ jobs:
       - name: Terraform Plan - ${{ env.WORKSPACE }}
         id: terraform-plan
         run: |
-          atmos terraform plan ${{ steps.atmos-config.outputs.stack_name }}
+          atmos terraform plan ${{ steps.atmos-config.outputs.stack_name }} -s ${{ steps.atmos-config.outputs.stack_name }} --ci
 
       - name: Cache Terraform Plan
         uses: actions/cache@v4

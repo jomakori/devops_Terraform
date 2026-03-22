@@ -123,5 +123,5 @@ jobs:
       - name: Terraform - Apply/Destroy - ${{ env.WORKSPACE }}
         id: terraform-apply-destroy
         run: |
-          atmos terraform apply ${{ steps.atmos-config.outputs.stack_name }} \
+          atmos terraform apply ${{ steps.atmos-config.outputs.stack_name }} -s ${{ steps.atmos-config.outputs.stack_name }} --ci \
             ${{ env.DESTROY == 'true' && '-destroy' || '' }}
