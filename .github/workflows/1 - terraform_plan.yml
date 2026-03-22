@@ -108,6 +108,11 @@ jobs:
           STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
           echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
 
+      - name: Terraform - Validate
+        run: |
+          atmos terraform init ${{ steps.atmos-config.outputs.stack_name }} -s ${{ steps.atmos-config.outputs.stack_name }}
+          atmos terraform validate ${{ steps.atmos-config.outputs.stack_name }} -s ${{ steps.atmos-config.outputs.stack_name }}
+
       - name: Terraform Plan - ${{ env.WORKSPACE }}
         id: terraform-plan
         run: |
