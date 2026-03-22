@@ -122,12 +122,12 @@ jobs:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
-      - name: Setup AWS Credentials
-        uses: aws-actions/configure-aws-credentials@main
-        with:
-          aws-region: ${{ env.DEFAULT_AWS_REGION }}
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+      # - name: Setup AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@main
+      #   with:
+      #     aws-region: ${{ env.DEFAULT_AWS_REGION }}
+      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
       - name: Generate Atmos Configuration
         run: |
