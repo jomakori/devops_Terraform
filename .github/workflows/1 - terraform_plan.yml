@@ -3,14 +3,6 @@ name: Terraform Plan
 on:
   workflow_dispatch:  # manual run fallback
     inputs:
-      force_plan_regeneration:
-        description: 'Force plan regeneration (bypass cache)'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
   pull_request:
     types:
       - opened
@@ -81,7 +73,6 @@ jobs:
     env:
       WORKSPACE: ${{ needs.detect-changes.outputs.changed }}
       DESTROY: ${{ needs.detect-changes.outputs.destroy }}
-      FORCE_REGEN: ${{ github.event.inputs.force_plan_regeneration || 'false' }}
     steps:
 
       - name: Checkout
@@ -89,13 +80,6 @@ jobs:
         with:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ (env.DESTROY == 'true' && 'main') || github.head_ref }}
-
-      - name: Atmos - Generate Configuration
-        id: atmos-config
-        run: |
-          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
-          STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
-          echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
 
       - name: Install Doppler cli
         uses: dopplerhq/cli-action@master
@@ -107,15 +91,27 @@ jobs:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
-      - name: Setup Terraform
+      - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: latest
 
-      - name: Setup Atmos
+      - name: Install Atmos
         uses: cloudposse/github-action-setup-atmos@v3
         with:
           atmos-version: latest
+
+      - name: Atmos - Setup config
+        id: atmos-config
+        run: |
+          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
+          STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
+          echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Terraform Plan - ${{ env.WORKSPACE }}
+        id: terraform-plan
+        run: |
+          atmos terraform plan ${{ steps.atmos-config.outputs.stack_name }}
 
       - name: Cache Terraform Plan
         uses: actions/cache@v4
@@ -126,21 +122,3 @@ jobs:
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
         env:
           CACHE_SKIP: ${{ env.FORCE_REGEN == 'true' }}
-
-      - name: Terraform Plan - ${{ env.WORKSPACE }}
-        if: env.DESTROY == 'false'
-        id: terraform-plan-apply
-        uses: cloudposse/github-action-atmos-terraform-plan@v5
-        with:
-          component: ${{ steps.atmos-config.outputs.stack_name }}
-          stack: ${{ steps.atmos-config.outputs.stack_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Terraform Plan Destroy - ${{ env.WORKSPACE }}
-        if: env.DESTROY == 'true'
-        id: terraform-plan-destroy
-        uses: cloudposse/github-action-atmos-terraform-plan@v5
-        with:
-          component: ${{ steps.atmos-config.outputs.stack_name }}
-          stack: ${{ steps.atmos-config.outputs.stack_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}

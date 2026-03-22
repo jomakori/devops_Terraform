@@ -77,13 +77,6 @@ jobs:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ env.DESTROY == 'true' && 'main' || format('refs/pull/{0}/head', env.PR_NUM) }}
 
-      - name: Atmos - Generate Configuration
-        id: atmos-config
-        run: |
-          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
-          STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
-          echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
-
       - name: Install Doppler cli
         uses: dopplerhq/cli-action@master
 
@@ -111,6 +104,13 @@ jobs:
         with:
           atmos-version: latest
 
+      - name: Atmos - Generate Configuration
+        id: atmos-config
+        run: |
+          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
+          STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
+          echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
+
       - name: Restore Terraform Cache
         uses: actions/cache@v4
         with:
@@ -120,42 +120,8 @@ jobs:
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
           fail-on-cache-miss: true
 
-      - name: Check - Validate Terraform Plan Cache
+      - name: Terraform - Apply/Destroy - ${{ env.WORKSPACE }}
+        id: terraform-apply-destroy
         run: |
-          STACK_NAME="${{ steps.atmos-config.outputs.stack_name }}"
-          if [ ! -d "stacks/${STACK_NAME}/.terraform" ]; then
-            echo "❌ ERROR: Terraform plan cache expired or not found"
-            echo ""
-            echo "Plan cache for workspace '${{ env.WORKSPACE }}' with commit '${{ github.sha }}' is missing."
-            echo "This typically means the plan is older than 1 day (GitHub's cache retention limit)."
-            echo ""
-            echo "🔧 Solution: Re-run the Terraform Plan workflow to generate a fresh plan"
-            echo ""
-            echo "Steps:"
-            echo "1. Go to GitHub Actions tab"
-            echo "2. Select 'Terraform Plan' workflow"
-            echo "3. Click 'Run workflow'"
-            echo "4. Click 'Run workflow' again"
-            echo ""
-            echo "After the plan completes, you can retry the apply/destroy operation."
-            exit 1
-          fi
-          echo "✅ Plan cache found for workspace: ${{ env.WORKSPACE }}"
-
-      - name: Terraform Apply - ${{ env.WORKSPACE }}
-        if: env.DESTROY == 'false'
-        id: terraform-apply
-        uses: cloudposse/github-action-atmos-terraform-apply@v5
-        with:
-          component: ${{ steps.atmos-config.outputs.stack_name }}
-          stack: ${{ steps.atmos-config.outputs.stack_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Terraform Destroy - ${{ env.WORKSPACE }}
-        if: env.DESTROY == 'true'
-        id: terraform-destroy
-        uses: cloudposse/github-action-atmos-terraform-destroy@v5
-        with:
-          component: ${{ steps.atmos-config.outputs.stack_name }}
-          stack: ${{ steps.atmos-config.outputs.stack_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          atmos terraform apply ${{ steps.atmos-config.outputs.stack_name }} \
+            ${{ env.DESTROY == 'true' && '-destroy' || '' }}
