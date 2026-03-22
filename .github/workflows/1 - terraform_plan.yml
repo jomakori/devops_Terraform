@@ -2,6 +2,15 @@ name: Terraform Plan
 
 on:
   workflow_dispatch:  # manual run fallback
+    inputs:
+      force_plan_regeneration:
+        description: 'Force plan regeneration (bypass cache)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
   pull_request:
     types:
       - opened
@@ -72,6 +81,7 @@ jobs:
     env:
       WORKSPACE: ${{ needs.detect-changes.outputs.changed }}
       DESTROY: ${{ needs.detect-changes.outputs.destroy }}
+      FORCE_REGEN: ${{ github.event.inputs.force_plan_regeneration || 'false' }}
     steps:
 
       - name: Checkout
@@ -79,6 +89,28 @@ jobs:
         with:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ (env.DESTROY == 'true' && 'main') || github.head_ref }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: Setup Atmos
+        uses: cloudposse/github-action-setup-atmos@v2
+        with:
+          atmos-version: latest
+
+      - name: Cache Terraform Plan
+        uses: actions/cache@v4
+        with:
+          path: |
+            atmos/.terraform
+            atmos/stacks/.terraform
+            atmos/components/terraform/**/.terraform
+            tfplan-${{ env.WORKSPACE }}.json
+          key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
+        env:
+          CACHE_SKIP: ${{ env.FORCE_REGEN == 'true' }}
 
       - name: Install Doppler cli
         uses: dopplerhq/cli-action@master
@@ -97,30 +129,39 @@ jobs:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
+      - name: Generate Atmos Configuration
+        run: |
+          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}" "."
+
       - name: Terraform Plan - ${{ env.WORKSPACE }} - Apply (conditional)
         if: env.DESTROY == 'false'
-        id: terraform-ci
-        uses: skyfjell/terraform-ci@latest
+        id: terraform-plan-apply
+        uses: cloudposse/github-action-atmos-terraform-plan@v2
         with:
-          working_directory: ${{ env.WORKSPACE }}
-          terraform_token: ${{ env.TERRAFORM_TOKEN }}
-          github_token: ${{ env.GITHUB_TOKEN }}
-          mode: plan
+          component: ${{ env.WORKSPACE }}
+          stack: ${{ env.WORKSPACE }}
+          atmos-config-path: ./atmos/conf
+          atmos-base-path: .
+          terraform-plan-role-arn: ${{ secrets.TERRAFORM_PLAN_ROLE_ARN || '' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'true'
-        uses: dflook/terraform-plan@main
-        env:
-          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }} 
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ env.TERRAFORM_TOKEN }}
-          TERRAFORM_PRE_RUN: |
-            command -v aws >/dev/null 2>&1 || {
-                echo >&2 "Installing awscli...";
-                curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" >/dev/null;
-                unzip awscliv2.zip >/dev/null;
-                ./aws/install;
-            }
+        id: terraform-plan-destroy
+        uses: cloudposse/github-action-atmos-terraform-plan@v2
         with:
-          workspace: ${{ env.WORKSPACE }}
-          path: ${{ env.WORKSPACE }} 
-          destroy: true
+          component: ${{ env.WORKSPACE }}
+          stack: ${{ env.WORKSPACE }}
+          atmos-config-path: ./atmos/conf
+          atmos-base-path: .
+          terraform-plan-role-arn: ${{ secrets.TERRAFORM_PLAN_ROLE_ARN || '' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          terraform-plan-args: -destroy
+
+      - name: Cache Plan Output
+        if: always()
+        run: |
+          # Save plan output for apply workflow
+          if [ -f "tfplan-${{ env.WORKSPACE }}.json" ]; then
+            echo "Plan cached for workspace: ${{ env.WORKSPACE }}"
+          fi

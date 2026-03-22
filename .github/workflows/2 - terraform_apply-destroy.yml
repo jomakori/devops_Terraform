@@ -77,6 +77,48 @@ jobs:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ env.DESTROY == 'true' && 'main' || format('refs/pull/{0}/head', env.PR_NUM) }}
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: Setup Atmos
+        uses: cloudposse/github-action-setup-atmos@v2
+        with:
+          atmos-version: latest
+
+      - name: Restore Terraform Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            atmos/.terraform
+            atmos/stacks/.terraform
+            atmos/components/terraform/**/.terraform
+            tfplan-${{ env.WORKSPACE }}.json
+          key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
+          fail-on-cache-miss: true
+
+      - name: Verify Plan Cache Exists
+        run: |
+          if [ ! -f "tfplan-${{ env.WORKSPACE }}.json" ]; then
+            echo "❌ ERROR: Terraform plan cache expired or not found"
+            echo ""
+            echo "Plan cache for workspace '${{ env.WORKSPACE }}' with commit '${{ github.sha }}' is missing."
+            echo "This typically means the plan is older than 1 day (GitHub's cache retention limit)."
+            echo ""
+            echo "🔧 Solution: Re-run the Terraform Plan workflow to generate a fresh plan"
+            echo ""
+            echo "Steps:"
+            echo "1. Go to GitHub Actions tab"
+            echo "2. Select 'Terraform Plan' workflow"
+            echo "3. Click 'Run workflow'"
+            echo "4. Click 'Run workflow' again"
+            echo ""
+            echo "After the plan completes, you can retry the apply/destroy operation."
+            exit 1
+          fi
+          echo "✅ Plan cache found for workspace: ${{ env.WORKSPACE }}"
+
       - name: Install Doppler cli
         uses: dopplerhq/cli-action@master
 
@@ -94,29 +136,30 @@ jobs:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
+      - name: Generate Atmos Configuration
+        run: |
+          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}" "."
+
       - name: Terraform Apply - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'false'
-        id: terraform-ci
-        uses: skyfjell/terraform-ci@latest
+        id: terraform-apply
+        uses: cloudposse/github-action-atmos-terraform-apply@v2
         with:
-          working_directory: ${{ env.WORKSPACE }}
-          terraform_token: ${{ env.TERRAFORM_TOKEN }}
-          github_token: ${{ env.GITHUB_TOKEN }}
-          mode: apply
+          component: ${{ env.WORKSPACE }}
+          stack: ${{ env.WORKSPACE }}
+          atmos-config-path: ./atmos/conf
+          atmos-base-path: .
+          terraform-apply-role-arn: ${{ secrets.TERRAFORM_APPLY_ROLE_ARN || '' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Terraform Destroy - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'true'
-        uses: dflook/terraform-destroy@main
-        env:
-          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }} # from Doppler
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ env.TERRAFORM_TOKEN }}
-          TERRAFORM_PRE_RUN: |
-            command -v aws >/dev/null 2>&1 || {
-                echo >&2 "Installing awscli...";
-                curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" >/dev/null;
-                unzip awscliv2.zip >/dev/null;
-                ./aws/install;
-            }
+        id: terraform-destroy
+        uses: cloudposse/github-action-atmos-terraform-destroy@v2
         with:
-          workspace: ${{ env.WORKSPACE }}
-          path: ${{ env.WORKSPACE }}
+          component: ${{ env.WORKSPACE }}
+          stack: ${{ env.WORKSPACE }}
+          atmos-config-path: ./atmos/conf
+          atmos-base-path: .
+          terraform-destroy-role-arn: ${{ secrets.TERRAFORM_DESTROY_ROLE_ARN || '' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
