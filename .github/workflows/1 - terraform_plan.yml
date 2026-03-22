@@ -141,9 +141,7 @@ jobs:
           component: ${{ env.WORKSPACE }}
           stack: ${{ env.WORKSPACE }}
           atmos-config-path: ./atmos/conf
-          atmos-base-path: .
-          terraform-plan-role-arn: ${{ secrets.TERRAFORM_PLAN_ROLE_ARN || '' }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'true'
@@ -153,10 +151,7 @@ jobs:
           component: ${{ env.WORKSPACE }}
           stack: ${{ env.WORKSPACE }}
           atmos-config-path: ./atmos/conf
-          atmos-base-path: .
-          terraform-plan-role-arn: ${{ secrets.TERRAFORM_PLAN_ROLE_ARN || '' }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          terraform-plan-args: -destroy
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache Plan Output
         if: always()
