@@ -108,6 +108,37 @@ jobs:
           STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
           echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
 
+      - name: Debug - Terraform Root/Backend Context
+        run: |
+          set +e
+          STACK_NAME="${{ steps.atmos-config.outputs.stack_name }}"
+          COMPONENT_DIR="stacks/${STACK_NAME}"
+          echo "[debug] workspace=${{ env.WORKSPACE }}"
+          echo "[debug] stack_name=${STACK_NAME}"
+          echo "[debug] component_dir=${COMPONENT_DIR}"
+          echo "[debug] pwd=$(pwd)"
+          echo "[debug] tree under component_dir"
+          find "${COMPONENT_DIR}" -maxdepth 2 -type f | sort
+          echo "[debug] root versions.tf (wrapper)"
+          sed -n '1,200p' "${COMPONENT_DIR}/versions.tf"
+          echo "[debug] child copied versions.tf (sanitized module source)"
+          sed -n '1,220p' "${COMPONENT_DIR}/_workspace_src/versions.tf" || true
+          echo "[debug] stack yaml"
+          sed -n '1,220p' "stacks/${STACK_NAME}.yaml"
+
+          echo "[debug] atmos describe component (yaml)"
+          atmos describe component "${STACK_NAME}" -s "${STACK_NAME}" 2>&1 || true
+
+          echo "[debug] terraform init from wrapper root"
+          terraform -chdir="${COMPONENT_DIR}" init -no-color 2>&1 | tee /tmp/tf-init.log
+          INIT_RC=${PIPESTATUS[0]}
+          echo "[debug] terraform init exit_code=${INIT_RC}"
+
+          echo "[debug] terraform workspace show/list/select-or-create"
+          terraform -chdir="${COMPONENT_DIR}" workspace show -no-color 2>&1 || true
+          terraform -chdir="${COMPONENT_DIR}" workspace list -no-color 2>&1 || true
+          terraform -chdir="${COMPONENT_DIR}" workspace select -or-create "${STACK_NAME}" -no-color 2>&1 || true
+
       - name: Terraform - Validate
         run: |
           atmos terraform init ${{ steps.atmos-config.outputs.stack_name }} -s ${{ steps.atmos-config.outputs.stack_name }}
