@@ -124,7 +124,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Atmos - Apply/Destroy - ${{ env.WORKSPACE }}
-        uses: cloudposse/github-action-atmos-apply@main
+        uses: cloudposse/github-action-atmos-terraform-apply@main
         with:
           checkout: false
           stack: ${{ steps.atmos-config.outputs.stack_name }}

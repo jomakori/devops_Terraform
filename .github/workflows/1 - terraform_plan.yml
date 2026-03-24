@@ -110,7 +110,7 @@ jobs:
 
       - name: Terraform - Plan ${{ env.WORKSPACE }}
         id: plan
-        uses: cloudposse/github-action-atmos-plan@main
+        uses: cloudposse/github-action-atmos-terraform-plan@main
         with:
           checkout: false
           stack: ${{ steps.atmos-config.outputs.stack_name }}
