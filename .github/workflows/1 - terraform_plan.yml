@@ -107,20 +107,12 @@ jobs:
           bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
           STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
           echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
-
-      - name: Debug - List Atmos config files
-        run: |
-          ls -la
-          ls -la stacks/
-          cat atmos.yaml
-          cat stacks/${{ steps.atmos-config.outputs.stack_name }}.yaml
-
       - name: Terraform - Plan ${{ env.WORKSPACE }}
         id: plan
         uses: cloudposse/github-action-atmos-terraform-plan@main
         with:
           skip-checkout: 'true'
-          atmos-config-path: atmos.yaml
+          atmos-config-path: stacks/atmos.yaml
           component: ${{ steps.atmos-config.outputs.stack_name }}
           stack: ${{ steps.atmos-config.outputs.stack_name }}
           plan-storage: 'false'

@@ -130,7 +130,6 @@ jobs:
           atmos-config-path: atmos.yaml
           component: ${{ steps.atmos-config.outputs.stack_name }}
           stack: ${{ steps.atmos-config.outputs.stack_name }}
-          sha: ${{ github.sha }}
           plan-storage: 'false'
           skip-plandiff: 'true'
 
