@@ -79,6 +79,16 @@ mkdir -p stacks
 # Generate stack configuration for the workspace
 STACK_NAME=$(echo "$WORKSPACE" | tr '/' '-')
 
+# Build variable assignments for the stack YAML with proper indentation (8 spaces)
+VAR_ASSIGNMENTS=""
+for var in $VARIABLES; do
+    VAR_ASSIGNMENTS="${VAR_ASSIGNMENTS}        ${var}: \${{ var.${var} }}
+"
+done
+
+# Remove trailing newline if present
+VAR_ASSIGNMENTS=$(echo "$VAR_ASSIGNMENTS" | sed '$ s/\n$//')
+
 cat > "stacks/${STACK_NAME}.yaml" << EOF
 # Stack configuration for workspace: $WORKSPACE
 
@@ -88,7 +98,8 @@ components:
       metadata:
         component: "${STACK_NAME}"
         description: "Terraform workspace: $WORKSPACE"
-      vars: {}
+      vars:
+${VAR_ASSIGNMENTS}
 EOF
 
 echo "✅ Created stacks/${STACK_NAME}.yaml"
