@@ -127,7 +127,7 @@ jobs:
         uses: cloudposse/github-action-atmos-terraform-apply@main
         with:
           skip-checkout: 'true'
-          atmos-config-path: ./
+          atmos-config-path: atmos.yaml
           component: ${{ steps.atmos-config.outputs.stack_name }}
           stack: ${{ steps.atmos-config.outputs.stack_name }}
           sha: ${{ github.sha }}
