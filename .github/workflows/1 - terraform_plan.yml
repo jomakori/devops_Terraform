@@ -112,10 +112,12 @@ jobs:
         id: plan
         uses: cloudposse/github-action-atmos-terraform-plan@main
         with:
-          checkout: false
+          skip-checkout: 'true'
+          atmos-config-path: atmos.yaml
+          component: ${{ steps.atmos-config.outputs.stack_name }}
           stack: ${{ steps.atmos-config.outputs.stack_name }}
-          terraform_version: latest
-          atmos_version: latest
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          plan-storage: 'false'
 
       - name: Cache Terraform Plan
         uses: actions/cache@v4

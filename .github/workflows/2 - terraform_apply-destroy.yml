@@ -104,12 +104,11 @@ jobs:
         with:
           atmos-version: latest
 
-      # - name: Atmos - Generate Configuration
-      #   id: atmos-config
-      #   run: |
-      #     bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
-      #     STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
-      #     echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
+      - name: Atmos - Set stack name
+        id: atmos-config
+        run: |
+          STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
+          echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
 
       - name: Restore Terraform Cache
         uses: actions/cache@v4
@@ -124,12 +123,18 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Atmos - Apply/Destroy - ${{ env.WORKSPACE }}
+        if: env.DESTROY != 'true'
         uses: cloudposse/github-action-atmos-terraform-apply@main
         with:
-          checkout: false
+          skip-checkout: 'true'
+          atmos-config-path: atmos.yaml
+          component: ${{ steps.atmos-config.outputs.stack_name }}
           stack: ${{ steps.atmos-config.outputs.stack_name }}
-          terraform_version: latest
-          atmos_version: latest
-          auto_approve: true
-          destroy: ${{ env.DESTROY }}
-          planfile: stacks/${{ steps.atmos-config.outputs.stack_name }}/terraform.tfplan
+          sha: ${{ github.sha }}
+          plan-storage: 'false'
+          skip-plandiff: 'true'
+
+      - name: Atmos - Destroy - ${{ env.WORKSPACE }}
+        if: env.DESTROY == 'true'
+        run: |
+          atmos terraform apply ${{ steps.atmos-config.outputs.stack_name }} -s ${{ steps.atmos-config.outputs.stack_name }} --ci -destroy
