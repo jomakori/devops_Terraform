@@ -122,16 +122,13 @@ jobs:
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
           fail-on-cache-miss: true
 
-      - name: Atmos - Apply/Destroy - ${{ env.WORKSPACE }}
+      - name: Atmos - Apply - ${{ env.WORKSPACE }}
         if: env.DESTROY != 'true'
-        uses: cloudposse/github-action-atmos-terraform-apply@main
-        with:
-          skip-checkout: 'true'
-          atmos-config-path: atmos.yaml
-          component: ${{ steps.atmos-config.outputs.stack_name }}
-          stack: ${{ steps.atmos-config.outputs.stack_name }}
-          plan-storage: 'false'
-          skip-plandiff: 'true'
+        run: |
+          atmos terraform apply ${{ steps.atmos-config.outputs.stack_name }} \
+            -s ${{ steps.atmos-config.outputs.stack_name }} \
+            --ci \
+            --auto-approve
 
       - name: Atmos - Destroy - ${{ env.WORKSPACE }}
         if: env.DESTROY == 'true'

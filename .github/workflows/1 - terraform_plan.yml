@@ -109,13 +109,10 @@ jobs:
           echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
       - name: Terraform - Plan ${{ env.WORKSPACE }}
         id: plan
-        uses: cloudposse/github-action-atmos-terraform-plan@main
-        with:
-          skip-checkout: 'true'
-          atmos-config-path: stacks/atmos.yaml
-          component: ${{ steps.atmos-config.outputs.stack_name }}
-          stack: ${{ steps.atmos-config.outputs.stack_name }}
-          plan-storage: 'false'
+        run: |
+          atmos terraform plan ${{ steps.atmos-config.outputs.stack_name }} \
+            -s ${{ steps.atmos-config.outputs.stack_name }} \
+            --ci
 
       - name: Cache Terraform Plan
         uses: actions/cache@v4
