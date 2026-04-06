@@ -81,15 +81,18 @@ jobs:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ (env.DESTROY == 'true' && 'main') || github.head_ref }}
 
-      - name: Install Doppler
+      - name: Setup Go
+        uses: actions/setup-go@v6.4.0
+
+      - name: Setup Doppler
         uses: dopplerhq/cli-action@master
 
-      - name: Install Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@main
         with:
           terraform_version: latest
 
-      - name: Install TF_summarize
+      - name: Setup TF_summarize
         run: go install github.com/jomakori/TF_summarize@latest
 
       - name: Doppler - Fetch Secrets
