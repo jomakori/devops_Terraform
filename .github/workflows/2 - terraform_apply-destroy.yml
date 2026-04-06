@@ -85,8 +85,8 @@ jobs:
         with:
           terraform_version: latest
 
-      - name: Install TF_summarize
-        run: go install github.com/jomakori/TF_summarize@main
+      - name: Install tf-summarize
+        run: go install github.com/jomakori/TF_summarize@latest
 
       - name: Doppler - Fetch Secrets
         id: doppler
@@ -114,7 +114,11 @@ jobs:
 
       - name: Terraform - Apply changes on ${{ env.WORKSPACE }}
         id: apply
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TF_PHASE: apply
+          TF_OUTPUT: gha
         run: |
           cd ${{ env.WORKSPACE }}"
-          terraform apply ${{ github.sha }}-plan.out -auto-approve | TF_PHASE=apply tfplan-summary
+          terraform apply ${{ github.sha }}-plan.out -auto-approve | tf-summarize
 
