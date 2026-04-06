@@ -81,8 +81,16 @@ jobs:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ (env.DESTROY == 'true' && 'main') || github.head_ref }}
 
-      - name: Install Doppler cli
+      - name: Install Doppler
         uses: dopplerhq/cli-action@master
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@main
+        with:
+          terraform_version: latest
+
+      - name: Install TF_summarize
+        run: go install github.com/jomakori/TF_summarize@main
 
       - name: Doppler - Fetch Secrets
         id: doppler
@@ -91,38 +99,24 @@ jobs:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
-      - name: Install Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: latest
-
-      - name: Install Atmos
-        uses: cloudposse/github-action-setup-atmos@v3
-        with:
-          atmos-version: latest
-
-      - name: Atmos - Setup config
-        id: atmos-config
+      - name: Terraform - Init ${{ env.WORKSPACE }}
         run: |
-          bash .github/scripts/generate-atmos-config.sh "${{ env.WORKSPACE }}"
-          STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
-          echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
+          cd ${{ env.WORKSPACE }}
+          terraform init
+          terraform validate
+
       - name: Terraform - Plan ${{ env.WORKSPACE }}
         id: plan
         run: |
-          atmos terraform plan ${{ steps.atmos-config.outputs.stack_name }} \
-            -s ${{ steps.atmos-config.outputs.stack_name }} \
-            --ci
+          cd ${{ env.WORKSPACE }}
+          terraform plan -out ${{ github.sha }}-plan.out | TF_PHASE=plan tfplan-summary
 
       - name: Cache Terraform Plan
-        uses: actions/cache@v4
+        uses: actions/cache@main
         with:
           path: |
-            atmos.yaml
-            stacks/${{ steps.atmos-config.outputs.stack_name }}/
-            stacks/.terraform
-            stacks/**/.terraform
-            stacks/${{ steps.atmos-config.outputs.stack_name }}/terraform.tfplan
+            ${{ env.WORKSPACE }}/.terraform
+            ${{ env.WORKSPACE }}/.terraform.lock.hcl
+            {{ env.WORKSPACE }}/${{ github.sha }}-plan.out
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
-        env:
-          CACHE_SKIP: ${{ env.FORCE_REGEN == 'true' }}
+          fail-on-cache-miss: true

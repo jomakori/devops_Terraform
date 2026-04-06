@@ -77,8 +77,16 @@ jobs:
           # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
           ref: ${{ env.DESTROY == 'true' && 'main' || format('refs/pull/{0}/head', env.PR_NUM) }}
 
-      - name: Install Doppler cli
+      - name: Install Doppler
         uses: dopplerhq/cli-action@master
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@main
+        with:
+          terraform_version: latest
+
+      - name: Install TF_summarize
+        run: go install github.com/jomakori/TF_summarize@main
 
       - name: Doppler - Fetch Secrets
         id: doppler
@@ -94,43 +102,19 @@ jobs:
       #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
       #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: latest
-
-      - name: Setup Atmos
-        uses: cloudposse/github-action-setup-atmos@v3
-        with:
-          atmos-version: latest
-
-      - name: Atmos - Set stack name
-        id: atmos-config
-        run: |
-          STACK_NAME=$(echo "${{ env.WORKSPACE }}" | tr '/' '-')
-          echo "stack_name=${STACK_NAME}" >> $GITHUB_OUTPUT
-
       - name: Restore Terraform Cache
-        uses: actions/cache@v4
+        uses: actions/cache@main
         with:
           path: |
-            atmos.yaml
-            stacks/${{ steps.atmos-config.outputs.stack_name }}/
-            stacks/.terraform
-            stacks/**/.terraform
-            stacks/${{ steps.atmos-config.outputs.stack_name }}/terraform.tfplan
+            ${{ env.WORKSPACE }}/.terraform
+            ${{ env.WORKSPACE }}/.terraform.lock.hcl
+            ${{ env.WORKSPACE }}/${{ github.sha }}-plan.out
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
           fail-on-cache-miss: true
 
-      - name: Atmos - Apply - ${{ env.WORKSPACE }}
-        if: env.DESTROY != 'true'
+      - name: Terraform - Apply changes on ${{ env.WORKSPACE }}
+        id: apply
         run: |
-          atmos terraform apply ${{ steps.atmos-config.outputs.stack_name }} \
-            -s ${{ steps.atmos-config.outputs.stack_name }} \
-            --ci \
-            --auto-approve
+          cd ${{ env.WORKSPACE }}"
+          terraform apply ${{ github.sha }}-plan.out -auto-approve | TF_PHASE=apply tfplan-summary
 
-      - name: Atmos - Destroy - ${{ env.WORKSPACE }}
-        if: env.DESTROY == 'true'
-        run: |
-          atmos terraform apply ${{ steps.atmos-config.outputs.stack_name }} -s ${{ steps.atmos-config.outputs.stack_name }} --ci -destroy
