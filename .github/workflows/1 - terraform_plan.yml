@@ -89,7 +89,7 @@ jobs:
         with:
           terraform_version: latest
 
-      - name: Install tf-summarize
+      - name: Install TF_summarize
         run: go install github.com/jomakori/TF_summarize@latest
 
       - name: Doppler - Fetch Secrets
@@ -113,7 +113,7 @@ jobs:
           TF_OUTPUT: gha
         run: |
           cd ${{ env.WORKSPACE }}
-          terraform plan -out ${{ github.sha }}-plan.out | tf-summarize
+          terraform plan -out ${{ github.sha }}-plan.out | TF_summarize
 
       - name: Cache Terraform Plan
         uses: actions/cache@main
