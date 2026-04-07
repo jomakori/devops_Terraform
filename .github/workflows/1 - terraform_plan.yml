@@ -102,13 +102,13 @@ jobs:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
-      - name: Terraform - Init ${{ env.WORKSPACE }}
+      - name: Terraform - Validate - ${{ env.WORKSPACE }}
         run: |
           cd ${{ env.WORKSPACE }}
           terraform init
           terraform validate
 
-      - name: Terraform - Plan ${{ env.WORKSPACE }}
+      - name: Terraform - Plan - ${{ env.WORKSPACE }}
         id: plan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -126,4 +126,3 @@ jobs:
             ${{ env.WORKSPACE }}/.terraform.lock.hcl
             {{ env.WORKSPACE }}/${{ github.sha }}-plan.out
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
-          fail-on-cache-miss: true
