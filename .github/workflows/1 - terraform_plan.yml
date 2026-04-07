@@ -83,6 +83,8 @@ jobs:
 
       - name: Setup Go
         uses: actions/setup-go@v6.4.0
+        with:
+          cache: false
 
       - name: Setup Doppler
         uses: dopplerhq/cli-action@master
