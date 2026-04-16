@@ -95,7 +95,7 @@ jobs:
           terraform_version: latest
 
       - name: Setup TF_summarize
-        run: go install github.com/jomakori/TF_summarize@fix_plan
+        run: go install github.com/jomakori/TF_summarize@latest
 
       - name: Doppler - Fetch Secrets
         id: doppler
@@ -128,3 +128,4 @@ jobs:
             ${{ env.WORKSPACE }}/.terraform.lock.hcl
             {{ env.WORKSPACE }}/${{ github.sha }}-plan.out
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
+
