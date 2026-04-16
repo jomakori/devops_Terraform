@@ -95,7 +95,7 @@ jobs:
           terraform_version: latest
 
       - name: Setup TF_summarize
-        run: go install github.com/jomakori/TF_summarize@latest
+        run: go install github.com/jomakori/TF_summarize@fix_plan
 
       - name: Doppler - Fetch Secrets
         id: doppler
