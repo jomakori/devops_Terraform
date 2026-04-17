@@ -129,5 +129,5 @@ jobs:
           TF_PHASE: apply
           TF_OUTPUT: gha,pr
         run: |
-          cd ${{ env.WORKSPACE }}"
+          cd ${{ env.WORKSPACE }}
           terraform apply ${{ github.sha }}-plan.out -auto-approve | TF_summarize

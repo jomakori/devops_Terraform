@@ -126,6 +126,6 @@ jobs:
           path: |
             ${{ env.WORKSPACE }}/.terraform
             ${{ env.WORKSPACE }}/.terraform.lock.hcl
-            {{ env.WORKSPACE }}/${{ github.sha }}-plan.out
+            ${{ env.WORKSPACE }}/${{ github.sha }}-plan.out
           key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
 
