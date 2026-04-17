@@ -64,9 +64,7 @@ jobs:
           fi
 
   terraform-plan:
-    # Conditional - Ensures outputs are set in previous workflow
     if: needs.detect-changes.outputs.changed != '' && needs.detect-changes.outputs.destroy != ''
-
     runs-on: ubuntu-latest
     name: Planned Changes
     needs: detect-changes
@@ -78,7 +76,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@main
         with:
-          # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
+          # Conditional, based on type of plan
           ref: ${{ (env.DESTROY == 'true' && 'main') || github.head_ref }}
 
       - name: Setup Go
