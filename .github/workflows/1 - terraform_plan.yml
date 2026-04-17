@@ -2,7 +2,6 @@ name: Terraform Plan
 
 on:
   workflow_dispatch:  # manual run fallback
-    inputs:
   pull_request:
     types:
       - opened
@@ -28,7 +27,7 @@ jobs:
 
       - name: Check - Detect Changes
         id: detect
-        run:  |
+        run: |
           # check - Only allow changes on a single workspace
           workspaces=$(git diff --name-only origin/main HEAD | awk -F/ '!/^\.|^\// && /\// {print $1}' | sort | uniq)
           count=$(echo "$workspaces" | wc -l)
@@ -116,14 +115,13 @@ jobs:
           TF_OUTPUT: gha
         run: |
           cd ${{ env.WORKSPACE }}
-          terraform plan -out ${{ github.sha }}-plan.out | TF_summarize
+          terraform plan -out plan.out | TF_summarize
 
       - name: Cache Terraform Plan
-        uses: actions/cache@main
+        uses: actions/cache/save@main
         with:
           path: |
             ${{ env.WORKSPACE }}/.terraform
             ${{ env.WORKSPACE }}/.terraform.lock.hcl
-            ${{ env.WORKSPACE }}/${{ github.sha }}-plan.out
-          key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
-
+            ${{ env.WORKSPACE }}/plan.out
+          key: ${{ env.WORKSPACE }}-pr${{ github.event.pull_request.number }}-plan

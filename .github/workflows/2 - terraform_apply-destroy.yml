@@ -14,11 +14,26 @@ jobs:
     outputs:
       changed: ${{ steps.detect.outputs.changed }}
       destroy: ${{ steps.destroy.outputs.destroy }}
+      pr_number: ${{ steps.pr.outputs.pr_number }}
     steps:
       - name: Checkout
         uses: actions/checkout@main
         with:
           fetch-depth: 0
+
+      - name: Check - Get PR Number
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get PR number for current branch
+          PR_NUMBER=$(gh pr view --json number -q .number 2>/dev/null || echo "")
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Error: No PR found for branch ${{ github.ref_name }}"
+            exit 1
+          fi
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "Found PR #$PR_NUMBER"
 
       - name: Check - Detect Workspace Changes
         id: detect
@@ -64,6 +79,7 @@ jobs:
     env:
       WORKSPACE: ${{ needs.detect-changes.outputs.changed }}
       DESTROY: ${{ needs.detect-changes.outputs.destroy }}
+      PR_NUMBER: ${{ needs.detect-changes.outputs.pr_number }}
     steps:
       - name: Checkout
         uses: actions/checkout@main
@@ -102,13 +118,13 @@ jobs:
       #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
       - name: Restore Terraform Cache
-        uses: actions/cache@main
+        uses: actions/cache/restore@main
         with:
           path: |
             ${{ env.WORKSPACE }}/.terraform
             ${{ env.WORKSPACE }}/.terraform.lock.hcl
-            ${{ env.WORKSPACE }}/${{ github.sha }}-plan.out
-          key: ${{ env.WORKSPACE }}-${{ github.sha }}-plan
+            ${{ env.WORKSPACE }}/plan.out
+          key: ${{ env.WORKSPACE }}-pr${{ env.PR_NUMBER }}-plan
           fail-on-cache-miss: true
 
       - name: Terraform - Apply changes on ${{ env.WORKSPACE }}
@@ -119,4 +135,4 @@ jobs:
           TF_OUTPUT: gha,pr
         run: |
           cd ${{ env.WORKSPACE }}
-          terraform apply ${{ github.sha }}-plan.out -auto-approve | TF_summarize
+          terraform apply plan.out -auto-approve | TF_summarize
