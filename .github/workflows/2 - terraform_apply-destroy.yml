@@ -6,6 +6,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  actions: read
 
 jobs:
   detect-changes:
@@ -14,26 +15,12 @@ jobs:
     outputs:
       changed: ${{ steps.detect.outputs.changed }}
       destroy: ${{ steps.destroy.outputs.destroy }}
-      pr_number: ${{ steps.pr.outputs.pr_number }}
+      run_id: ${{ steps.find-run.outputs.run_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@main
         with:
           fetch-depth: 0
-
-      - name: Check - Get PR Number
-        id: pr
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Get PR number for current branch
-          PR_NUMBER=$(gh pr view --json number -q .number 2>/dev/null || echo "")
-          if [ -z "$PR_NUMBER" ]; then
-            echo "Error: No PR found for branch ${{ github.ref_name }}"
-            exit 1
-          fi
-          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          echo "Found PR #$PR_NUMBER"
 
       - name: Check - Detect Workspace Changes
         id: detect
@@ -72,6 +59,15 @@ jobs:
             echo "destroy=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: check - Grab Run ID
+        id: find-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=$(gh run list -w "1 - terraform_plan.yml" -b "${{ github.ref_name }}" -s success -L 1 --json databaseId -q '.[0].databaseId')
+          [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ] && { echo "No plan found"; exit 1; }
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
   terraform-apply-destroy:
     runs-on: ubuntu-latest
     name: Apply Changes # Terraform Apply or Destroy
@@ -79,7 +75,6 @@ jobs:
     env:
       WORKSPACE: ${{ needs.detect-changes.outputs.changed }}
       DESTROY: ${{ needs.detect-changes.outputs.destroy }}
-      PR_NUMBER: ${{ needs.detect-changes.outputs.pr_number }}
     steps:
       - name: Checkout
         uses: actions/checkout@main
@@ -117,15 +112,13 @@ jobs:
       #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
       #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Restore Terraform Cache
-        uses: actions/cache/restore@main
+      - name: Restore Terraform Plan
+        uses: actions/download-artifact@main
         with:
-          path: |
-            ${{ env.WORKSPACE }}/.terraform
-            ${{ env.WORKSPACE }}/.terraform.lock.hcl
-            ${{ env.WORKSPACE }}/plan.out
-          key: ${{ env.WORKSPACE }}-pr${{ env.PR_NUMBER }}-plan
-          fail-on-cache-miss: true
+          name: ${{ env.WORKSPACE }}-plan
+          path: ${{ env.WORKSPACE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.detect-changes.outputs.run_id }}
 
       - name: Terraform - Apply changes on ${{ env.WORKSPACE }}
         id: apply

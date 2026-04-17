@@ -117,11 +117,12 @@ jobs:
           cd ${{ env.WORKSPACE }}
           terraform plan -out plan.out | TF_summarize
 
-      - name: Cache Terraform Plan
-        uses: actions/cache/save@main
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@main
         with:
+          name: ${{ env.WORKSPACE }}-plan
           path: |
             ${{ env.WORKSPACE }}/.terraform
             ${{ env.WORKSPACE }}/.terraform.lock.hcl
             ${{ env.WORKSPACE }}/plan.out
-          key: ${{ env.WORKSPACE }}-pr${{ github.event.pull_request.number }}-plan
+          retention-days: 7
