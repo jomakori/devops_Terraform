@@ -10,6 +10,7 @@ provider "oci" {
 # Tailscale Provider Configuration
 provider "tailscale" {
   api_key = var.TAILSCALE_API_KEY
+  tailnet = var.TAILSCALE_ID
 }
 
 # Doppler Provider Configuration

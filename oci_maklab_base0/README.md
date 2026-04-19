@@ -263,3 +263,74 @@ make apply
 - [Doppler Terraform Provider](https://registry.terraform.io/providers/DopplerHQ/doppler)
 - [OCI Free Tier](https://www.oracle.com/cloud/free/)
 - [Tailscale API](https://tailscale.com/api)
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.0 |
+| <a name="requirement_doppler"></a> [doppler](#requirement\_doppler) | >= 1.9.0 |
+| <a name="requirement_oci"></a> [oci](#requirement\_oci) | >= 5.0.0 |
+| <a name="requirement_tailscale"></a> [tailscale](#requirement\_tailscale) | >= 0.13.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| <a name="provider_doppler"></a> [doppler](#provider\_doppler) | 1.21.1 |
+| <a name="provider_oci"></a> [oci](#provider\_oci) | 8.5.0 |
+| <a name="provider_tailscale"></a> [tailscale](#provider\_tailscale) | 0.28.0 |
+
+## Modules
+
+| Name | Source | Version |
+| ---- | ------ | ------- |
+| <a name="module_compute_instance"></a> [compute\_instance](#module\_compute\_instance) | oracle-terraform-modules/compute-instance/oci | ~> 2.4 |
+| <a name="module_tailscale_install"></a> [tailscale\_install](#module\_tailscale\_install) | tailscale/tailscale/cloudinit | ~> 0.0.11 |
+| <a name="module_vcn"></a> [vcn](#module\_vcn) | oracle-terraform-modules/vcn/oci | ~> 3.0 |
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [doppler_secret.tailscale_auth_key](https://registry.terraform.io/providers/DopplerHQ/doppler/latest/docs/resources/secret) | resource |
+| [oci_core_security_list.public_security_list](https://registry.terraform.io/providers/oracle/oci/latest/docs/resources/core_security_list) | resource |
+| [tailscale_tailnet_key.vm_auth_key](https://registry.terraform.io/providers/tailscale/tailscale/latest/docs/resources/tailnet_key) | resource |
+| [oci_core_images.oracle_linux_arm](https://registry.terraform.io/providers/oracle/oci/latest/docs/data-sources/core_images) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_DOPPLER_TOKEN"></a> [DOPPLER\_TOKEN](#input\_DOPPLER\_TOKEN) | Doppler token for accessing secrets | `string` | n/a | yes |
+| <a name="input_OCI_FINGERPRINT"></a> [OCI\_FINGERPRINT](#input\_OCI\_FINGERPRINT) | OCI API key fingerprint | `string` | `""` | no |
+| <a name="input_OCI_PRIVATE_KEY"></a> [OCI\_PRIVATE\_KEY](#input\_OCI\_PRIVATE\_KEY) | OCI private key for API authentication | `string` | `""` | no |
+| <a name="input_OCI_TENANCY_OCID"></a> [OCI\_TENANCY\_OCID](#input\_OCI\_TENANCY\_OCID) | OCI Tenancy OCID | `string` | n/a | yes |
+| <a name="input_OCI_USER_OCID"></a> [OCI\_USER\_OCID](#input\_OCI\_USER\_OCID) | OCI User OCID | `string` | `""` | no |
+| <a name="input_TAILSCALE_API_KEY"></a> [TAILSCALE\_API\_KEY](#input\_TAILSCALE\_API\_KEY) | Tailscale API key for managing tailscale provider | `string` | n/a | yes |
+| <a name="input_TAILSCALE_AUTH_KEY"></a> [TAILSCALE\_AUTH\_KEY](#input\_TAILSCALE\_AUTH\_KEY) | Tailscale Auth Key for creating new keys for VMs | `string` | n/a | yes |
+| <a name="input_TAILSCALE_ID"></a> [TAILSCALE\_ID](#input\_TAILSCALE\_ID) | Tailscale Workspace ID | `string` | n/a | yes |
+| <a name="input_cidr_blocks"></a> [cidr\_blocks](#input\_cidr\_blocks) | CIDR blocks for networking | <pre>object({<br/>    vcn_cidr     = string<br/>    public_cidr  = string<br/>    private_cidr = string<br/>    global_cidr  = string<br/>  })</pre> | <pre>{<br/>  "global_cidr": "0.0.0.0/0",<br/>  "private_cidr": "10.0.2.0/24",<br/>  "public_cidr": "10.0.1.0/24",<br/>  "vcn_cidr": "10.0.0.0/16"<br/>}</pre> | no |
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment name (e.g., production, staging) | `string` | `"production"` | no |
+| <a name="input_name"></a> [name](#input\_name) | Name for resources (e.g., maklab-base0) | `string` | `"maklab-base0"` | no |
+| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Project name for resource naming | `string` | `"oci-arm-vm"` | no |
+| <a name="input_region"></a> [region](#input\_region) | OCI region | `string` | `"us-ashburn-1"` | no |
+| <a name="input_tags"></a> [tags](#input\_tags) | Global tags for all resources | `map(string)` | <pre>{<br/>  "environment": "development",<br/>  "managed_by": "terraform",<br/>  "project": "oci-arm-vm"<br/>}</pre> | no |
+| <a name="input_tailscale_key_expiry_days"></a> [tailscale\_key\_expiry\_days](#input\_tailscale\_key\_expiry\_days) | Tailscale auth key expiry in days | `number` | `90` | no |
+| <a name="input_tcp_protocol"></a> [tcp\_protocol](#input\_tcp\_protocol) | TCP protocol number | `string` | `"6"` | no |
+| <a name="input_vm_shape"></a> [vm\_shape](#input\_vm\_shape) | OCI VM shape for ARM instances | `string` | `"VM.Standard.A1.Flex"` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| <a name="output_doppler_secret_url"></a> [doppler\_secret\_url](#output\_doppler\_secret\_url) | URL to view the Tailscale auth key in Doppler |
+| <a name="output_emergency_access"></a> [emergency\_access](#output\_emergency\_access) | Emergency access instructions |
+| <a name="output_key_rotation_schedule"></a> [key\_rotation\_schedule](#output\_key\_rotation\_schedule) | Key rotation schedule information |
+| <a name="output_oci_logging_url"></a> [oci\_logging\_url](#output\_oci\_logging\_url) | URL to view logs in OCI Logging |
+| <a name="output_tailscale_device_name"></a> [tailscale\_device\_name](#output\_tailscale\_device\_name) | Tailscale device name for the VM |
+| <a name="output_verification_commands"></a> [verification\_commands](#output\_verification\_commands) | Commands to verify the setup |
+| <a name="output_vm_instance_id"></a> [vm\_instance\_id](#output\_vm\_instance\_id) | Instance ID of the ARM VM |
+| <a name="output_vm_private_ip"></a> [vm\_private\_ip](#output\_vm\_private\_ip) | Private IP address of the ARM VM |
+| <a name="output_vm_public_ip"></a> [vm\_public\_ip](#output\_vm\_public\_ip) | Public IP address of the ARM VM |
+<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

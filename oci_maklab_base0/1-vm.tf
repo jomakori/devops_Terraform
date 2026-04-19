@@ -90,7 +90,7 @@ resource "tailscale_tailnet_key" "vm_auth_key" {
 # Tailscale - cloud-init configuration using official Tailscale Terraform module
 module "tailscale_install" {
   source  = "tailscale/tailscale/cloudinit"
-  version = "~> 0.1"
+  version = "~> 0.0.11"
 
   auth_key = tailscale_tailnet_key.vm_auth_key.key
   hostname = "${var.name}-vm"
