@@ -12,11 +12,11 @@ module "vcn" {
   vcn_cidrs     = [var.cidr_blocks.vcn_cidr]
 
   # internet gateway
-  create_internet_gateway = true
+  create_internet_gateway       = true
   internet_gateway_display_name = "${var.name}-igw"
 
   # subnets
-  create_nat_gateway = false
+  create_nat_gateway     = false
   create_service_gateway = false
 
   subnets = {
@@ -80,6 +80,24 @@ resource "oci_core_security_list" "public_security_list" {
   }
 }
 
+# Tailscale - auth key generation & rotation (defaults to 90-day expiry)
+resource "tailscale_tailnet_key" "vm_auth_key" {
+  expiry        = var.tailscale_key_expiry_days
+  preauthorized = true
+  reusable      = true
+}
+
+# Tailscale - cloud-init configuration using official Tailscale Terraform module
+module "tailscale_install" {
+  source  = "tailscale/tailscale/cloudinit"
+  version = "~> 0.1"
+
+  auth_key = tailscale_tailnet_key.vm_auth_key.key
+  hostname = "${var.name}-vm"
+
+  accept_routes = true
+}
+
 # Compute - arm vm instance
 module "compute_instance" {
   source  = "oracle-terraform-modules/compute-instance/oci"
@@ -88,27 +106,20 @@ module "compute_instance" {
   compartment_ocid      = var.OCI_TENANCY_OCID
   instance_display_name = "${var.name}-vm"
   source_ocid           = data.oci_core_images.oracle_linux_arm.images[0].id
-  subnet_ocids          = [module.vcn.subnet_id["${var.name}-public-subnet"]]
+  subnet_ocids          = [module.vcn.subnet_id["public"]]
 
-  shape                      = var.vm_shape
-  instance_flex_ocpus        = 4
+  shape                       = var.vm_shape
+  instance_flex_ocpus         = 4
   instance_flex_memory_in_gbs = 24
 
   ssh_public_keys            = ""
-  user_data                  = base64encode(file("${path.module}/cloud-init.sh"))
+  user_data                  = module.tailscale_install.rendered
   public_ip                  = "EPHEMERAL"
   block_storage_sizes_in_gbs = [200]
 
   freeform_tags = var.tags
 
-  depends_on = [oci_core_security_list.public_security_list]
-}
-
-# Tailscale - auth key generation & rotation (defaults to 90-day expiry)
-resource "tailscale_tailnet_key" "vm_auth_key" {
-  reusable      = false
-  ephemeral     = false
-  preauthorized = true
+  depends_on = [oci_core_security_list.public_security_list, tailscale_tailnet_key.vm_auth_key]
 }
 
 # Doppler - secret storage
@@ -120,27 +131,4 @@ resource "doppler_secret" "tailscale_auth_key" {
   value = tailscale_tailnet_key.vm_auth_key.key
 
   depends_on = [tailscale_tailnet_key.vm_auth_key]
-}
-
-# Logging - for tailscale verification logs
-module "logging" {
-  source  = "oracle-terraform-modules/logging/oci"
-  version = "~> 0.4"
-
-  compartment_id = var.OCI_TENANCY_OCID
-  tenancy_id     = var.OCI_TENANCY_OCID
-  service_logdef = {}
-
-  linux_logdef = {
-    tailscale_logs = {
-      loggroup = "${var.name}-tailscale-logs"
-      dg       = "tailscale_logs"
-      path     = ["/var/log/tailscale"]
-    }
-  }
-
-  log_retention_duration = 14
-  loggroup_tags          = var.tags
-
-  depends_on = [module.compute_instance]
 }

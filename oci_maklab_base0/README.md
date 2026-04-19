@@ -1,16 +1,17 @@
 # OCI ARM VM with Tailscale Integration
 
-Security-first ARM VM deployment on OCI Free Tier with automated Tailscale integration and 90-day key rotation.
+Security-first ARM VM deployment on OCI Free Tier with automated Tailscale integration using Tailscale's official Terraform module and 90-day key rotation.
 
 ## 📋 Features
 
 - **Maxed-out OCI Free Tier**: 4 ARM vCPU, 24GB RAM, 200GB storage
 - **Latest Fedora OS**: ARM-optimized Fedora image
 - **Tailscale VPN**: Secure access with 90-day rotatable auth keys
-- **Doppler Secrets**: Centralized secret management
+- **Official Tailscale Terraform Module**: Uses `terraform-cloudinit-tailscale` module for cloud-init
+- **Doppler Secrets**: Centralized secret management (Terraform-side only)
 - **Automated Key Rotation**: GitHub Actions workflow every 85 days
 - **Structured Logging**: OCI Logging with JSON format
-- **Security-First**: Minimal public exposure, Tailscale-only access
+- **Security-First**: Minimal public exposure, Tailscale-only access, auth key embedded at apply time
 
 ## 🏗️ Architecture
 
@@ -29,12 +30,27 @@ oci_maklab_base0/
 ├── versions.tf          # Provider versions
 ├── variables.tf         # Secret values and repeated values
 ├── providers.tf         # Provider configurations
-├── vm.tf               # All infrastructure resources
-├── outputs.tf          # Connection details
-├── cloud-init.sh       # VM initialization script
-├── Makefile            # Convenience commands
-└── README.md           # This file
+├── 1-vm.tf              # All infrastructure resources
+├── data.tf              # Data sources for OCI images
+├── outputs.tf           # Connection details
+├── Makefile             # Convenience commands
+└── README.md            # This file
 ```
+
+### Tailscale Integration
+
+This project uses Tailscale's official open-source Terraform module [`terraform-cloudinit-tailscale`](https://github.com/tailscale/terraform-cloudinit-tailscale) for cloud-init configuration. This approach:
+
+1. **Generates cloud-init at apply time**: The auth key is embedded directly into the cloud-init configuration
+2. **No runtime secret retrieval**: The VM doesn't need Doppler CLI installed to fetch secrets
+3. **Official Tailscale module**: Uses Tailscale's maintained cloud-init module
+4. **Zero custom scripts**: No manual shell scripts required - the module handles everything
+
+The `terraform-cloudinit-tailscale` module generates a complete cloud-init configuration that:
+- Installs Tailscale using the official package repository
+- Authenticates with the provided auth key
+- Configures hostname, exit node advertising, and route acceptance
+- Handles all OS-specific installation details
 
 ## 🚀 Deployment
 
@@ -42,9 +58,9 @@ oci_maklab_base0/
 
 1. **OCI Account**: Free tier account with API credentials
 2. **Tailscale Account**: API key for auth key generation
-3. **Doppler Account**: Token for secret management
+3. **Doppler Account**: Token for secret management (Terraform-side only)
 4. **Terraform CLI**: Version 1.5.0 or later
-5. **Doppler CLI**: For secret injection
+5. **Doppler CLI**: For secret injection during Terraform operations
 
 ### Setup Doppler Secrets
 
@@ -242,6 +258,8 @@ make apply
 
 - [OCI Terraform Provider](https://registry.terraform.io/providers/oracle/oci)
 - [Tailscale Terraform Provider](https://registry.terraform.io/providers/tailscale/tailscale)
+- [Tailscale Cloud-Init Terraform Module](https://github.com/tailscale/terraform-cloudinit-tailscale)
+- [Tailscale Open-Source Terraform Module Blog Post](https://tailscale.com/blog/open-source-terraform-module)
 - [Doppler Terraform Provider](https://registry.terraform.io/providers/DopplerHQ/doppler)
 - [OCI Free Tier](https://www.oracle.com/cloud/free/)
 - [Tailscale API](https://tailscale.com/api)

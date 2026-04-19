@@ -1,10 +1,10 @@
 # OCI Provider Configuration
 provider "oci" {
-  fingerprint      = var.OCI_FINGERPRINT
-  private_key      = var.OCI_PRIVATE_KEY
-  region           = var.region
-  tenancy_ocid     = var.OCI_TENANCY_OCID
-  user_ocid        = var.OCI_USER_OCID
+  fingerprint  = var.OCI_FINGERPRINT
+  private_key  = var.OCI_PRIVATE_KEY
+  region       = var.region
+  tenancy_ocid = var.OCI_TENANCY_OCID
+  user_ocid    = var.OCI_USER_OCID
 }
 
 # Tailscale Provider Configuration

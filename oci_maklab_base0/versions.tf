@@ -26,3 +26,8 @@ terraform {
     }
   }
 }
+
+provider "tailscale" {
+  api_key = var.TAILSCALE_API_KEY
+  tailnet = var.TAILSCALE_ID
+}

@@ -102,7 +102,19 @@ variable "OCI_USER_OCID" {
 }
 
 variable "TAILSCALE_API_KEY" {
-  description = "Tailscale API key for generating auth keys"
+  description = "Tailscale API key for managing tailscale provider"
+  type        = string
+  sensitive   = true
+}
+
+variable "TAILSCALE_AUTH_KEY" {
+  description = "Tailscale Auth Key for creating new keys for VMs"
+  type        = string
+  sensitive   = true
+}
+
+variable "TAILSCALE_ID" {
+  description = "Tailscale Workspace ID"
   type        = string
   sensitive   = true
 }
