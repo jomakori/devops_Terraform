@@ -128,4 +128,4 @@ jobs:
           TF_OUTPUT: gha,pr
         run: |
           cd ${{ env.WORKSPACE }}
-          terraform apply plan.out -auto-approve | TF_summarize
+          terraform apply plan.out | TF_summarize
