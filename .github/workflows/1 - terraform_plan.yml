@@ -113,9 +113,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TF_PHASE: plan
           TF_OUTPUT: gha
+        shell: bash
         run: |
+          set -o pipefail
           cd ${{ env.WORKSPACE }}
-          terraform plan -out plan.out | TF_summarize
+          terraform plan -out plan.out 2>&1 | TF_summarize
 
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@main

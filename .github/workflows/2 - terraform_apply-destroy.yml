@@ -120,12 +120,20 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ needs.detect-changes.outputs.run_id }}
 
+      # Needed for cloud init for state
+      - name: Terraform Init
+        run: |
+          cd ${{ env.WORKSPACE }}
+          terraform init
+
       - name: Terraform - Apply changes on ${{ env.WORKSPACE }}
         id: apply
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TF_PHASE: apply
           TF_OUTPUT: gha,pr
+        shell: bash
         run: |
+          set -o pipefail
           cd ${{ env.WORKSPACE }}
-          terraform apply plan.out | TF_summarize
+          terraform apply -auto-approve plan.out 2>&1 | TF_summarize
