@@ -126,7 +126,7 @@ jobs:
           cd ${{ env.WORKSPACE }}
           terraform init
 
-      - name: Terraform - Apply changes on ${{ env.WORKSPACE }}
+      - name: Terraform ${{ env.DESTROY == 'true' && 'Destroy' || 'Apply' }} - ${{ env.WORKSPACE }}
         id: apply
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

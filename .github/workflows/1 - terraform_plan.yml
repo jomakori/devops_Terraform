@@ -101,13 +101,13 @@ jobs:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
-      - name: Terraform - Validate - ${{ env.WORKSPACE }}
+      - name: Terraform Validate - ${{ env.WORKSPACE }}
         run: |
           cd ${{ env.WORKSPACE }}
           terraform init
           terraform validate
 
-      - name: Terraform - Plan - ${{ env.WORKSPACE }}
+      - name: Terraform Plan - ${{ env.WORKSPACE }}
         id: plan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
