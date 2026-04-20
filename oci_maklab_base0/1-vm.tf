@@ -92,10 +92,46 @@ module "tailscale_install" {
   source  = "tailscale/tailscale/cloudinit"
   version = "~> 0.0.11"
 
-  auth_key = tailscale_tailnet_key.vm_auth_key.key
-  hostname = "${var.name}-vm"
-
   accept_routes = true
+  auth_key      = tailscale_tailnet_key.vm_auth_key.key
+  enable_ssh    = true
+  hostname      = "${var.name}-vm"
+  max_retries   = 10
+  retry_delay   = 10
+
+  additional_parts = [
+    {
+      filename     = "network_ready.sh"
+      content_type = "text/x-shellscript"
+      content      = <<-EOT
+        #!/bin/sh
+        # Wait for network connectivity before proceeding
+        max_attempts=30
+        attempt=1
+        while [ $attempt -le $max_attempts ]; do
+          if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+            echo "Network connectivity confirmed"
+            exit 0
+          fi
+          echo "Waiting for network connectivity... ($attempt/$max_attempts)"
+          sleep 2
+          attempt=$((attempt + 1))
+        done
+        echo "Failed to establish network connectivity after $max_attempts attempts"
+        exit 1
+      EOT
+    },
+    {
+      filename     = "udp_offloads.sh"
+      content_type = "text/x-shellscript"
+      content      = <<-EOT
+        #!/bin/sh
+        # Override script to avoid network device detection failures
+        echo "Skipping UDP offloads optimization for OCI instance"
+        exit 0
+      EOT
+    }
+  ]
 }
 
 # Compute - arm vm instance
