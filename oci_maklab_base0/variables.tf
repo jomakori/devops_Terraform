@@ -82,7 +82,7 @@ variable "vm_cpu" {
 variable "vm_memory" {
   description = "Memory in GB for flexible shapes"
   type        = number
-  default     = 24
+  default     = 12
 }
 
 variable "alternative_regions" {

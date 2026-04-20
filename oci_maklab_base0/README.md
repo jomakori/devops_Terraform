@@ -318,6 +318,7 @@ make apply
 | [oci_core_security_list.public_security_list](https://registry.terraform.io/providers/oracle/oci/latest/docs/resources/core_security_list) | resource |
 | [tailscale_tailnet_key.vm_auth_key](https://registry.terraform.io/providers/tailscale/tailscale/latest/docs/resources/tailnet_key) | resource |
 | [oci_core_images.oracle_linux_arm](https://registry.terraform.io/providers/oracle/oci/latest/docs/data-sources/core_images) | data source |
+| [oci_core_shapes.shape_validation](https://registry.terraform.io/providers/oracle/oci/latest/docs/data-sources/core_shapes) | data source |
 
 ## Inputs
 
@@ -342,7 +343,7 @@ make apply
 | <a name="input_tailscale_key_expiry_days"></a> [tailscale\_key\_expiry\_days](#input\_tailscale\_key\_expiry\_days) | Tailscale auth key expiry in days | `number` | `90` | no |
 | <a name="input_tcp_protocol"></a> [tcp\_protocol](#input\_tcp\_protocol) | TCP protocol number | `string` | `"6"` | no |
 | <a name="input_vm_cpu"></a> [vm\_cpu](#input\_vm\_cpu) | Number of OCPUs for flexible shapes. Reduce if experiencing capacity issues. | `number` | `2` | no |
-| <a name="input_vm_memory"></a> [vm\_memory](#input\_vm\_memory) | Memory in GB for flexible shapes | `number` | `24` | no |
+| <a name="input_vm_memory"></a> [vm\_memory](#input\_vm\_memory) | Memory in GB for flexible shapes | `number` | `12` | no |
 | <a name="input_vm_shape"></a> [vm\_shape](#input\_vm\_shape) | OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM), VM.Standard.A2.Flex (ARM), VM.Standard.E4.Flex (x86) | `string` | `"VM.Standard.A2.Flex"` | no |
 
 ## Outputs
@@ -355,6 +356,7 @@ make apply
 | <a name="output_log_group_name"></a> [log\_group\_name](#output\_log\_group\_name) | OCI Log Group name for Tailscale logs |
 | <a name="output_log_retention_days"></a> [log\_retention\_days](#output\_log\_retention\_days) | Log retention period in days |
 | <a name="output_oci_logging_url"></a> [oci\_logging\_url](#output\_oci\_logging\_url) | URL to view logs in OCI Logging |
+| <a name="output_shape_validation"></a> [shape\_validation](#output\_shape\_validation) | Validation that the selected VM shape is available in the region |
 | <a name="output_tailscale_device_name"></a> [tailscale\_device\_name](#output\_tailscale\_device\_name) | Tailscale device name for the VM |
 | <a name="output_verification_commands"></a> [verification\_commands](#output\_verification\_commands) | Commands to verify the setup |
 | <a name="output_vm_instance_id"></a> [vm\_instance\_id](#output\_vm\_instance\_id) | Instance ID of the ARM VM |

@@ -95,6 +95,11 @@ locals {
   })
 }
 
+# Shape availability validation
+locals {
+  shape_available = length(data.oci_core_shapes.shape_validation.shapes) > 0
+}
+
 # Compute - arm vm instance
 module "vm" {
   source  = "oracle-terraform-modules/compute-instance/oci"
