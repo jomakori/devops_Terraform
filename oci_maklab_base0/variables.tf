@@ -49,12 +49,6 @@ variable "tags" {
   }
 }
 
-variable "tailscale_key_expiry_days" {
-  description = "Tailscale auth key expiry in days"
-  type        = number
-  default     = 90
-}
-
 variable "log_retention_days" {
   description = "OCI Logging retention period in days"
   type        = number

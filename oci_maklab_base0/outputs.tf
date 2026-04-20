@@ -3,7 +3,7 @@
 # Shape validation output - will fail during plan if shape is not available
 output "shape_validation" {
   description = "Validation that the selected VM shape is available in the region"
-  value       = local.shape_available ? "Shape '${var.vm_shape}' is available in ${var.region}" : tobool("ERROR: Shape '${var.vm_shape}' is not available in region '${var.region}'. Run: oci compute shape list --compartment-id ${var.OCI_TENANCY_OCID} --shape ${var.vm_shape}")
+  value       = local.shape_available ? "Shape '${var.vm_shape}' is available in ${var.region}" : "ERROR: Shape '${var.vm_shape}' is not available in region '${var.region}'. Run: oci compute shape list --compartment-id <compartment-id> --shape ${var.vm_shape}"
   sensitive   = true
 }
 

@@ -340,7 +340,6 @@ make apply
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Project name for resource naming | `string` | `"oci-arm-vm"` | no |
 | <a name="input_region"></a> [region](#input\_region) | OCI region | `string` | `"us-ashburn-1"` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Global tags for all resources | `map(string)` | <pre>{<br/>  "environment": "development",<br/>  "managed_by": "terraform",<br/>  "project": "oci-arm-vm"<br/>}</pre> | no |
-| <a name="input_tailscale_key_expiry_days"></a> [tailscale\_key\_expiry\_days](#input\_tailscale\_key\_expiry\_days) | Tailscale auth key expiry in days | `number` | `90` | no |
 | <a name="input_tcp_protocol"></a> [tcp\_protocol](#input\_tcp\_protocol) | TCP protocol number | `string` | `"6"` | no |
 | <a name="input_vm_cpu"></a> [vm\_cpu](#input\_vm\_cpu) | Number of OCPUs for flexible shapes. Reduce if experiencing capacity issues. | `number` | `2` | no |
 | <a name="input_vm_memory"></a> [vm\_memory](#input\_vm\_memory) | Memory in GB for flexible shapes | `number` | `12` | no |

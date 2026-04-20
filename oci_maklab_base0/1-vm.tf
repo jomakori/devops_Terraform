@@ -82,7 +82,6 @@ resource "oci_core_security_list" "public_security_list" {
 
 # Tailscale - auth key generation & rotation (defaults to 90-day expiry)
 resource "tailscale_tailnet_key" "vm_auth_key" {
-  expiry        = var.tailscale_key_expiry_days
   preauthorized = true
   reusable      = true
 }
