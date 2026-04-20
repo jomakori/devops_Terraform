@@ -27,7 +27,18 @@ output "doppler_secret_url" {
 
 output "oci_logging_url" {
   description = "URL to view logs in OCI Logging"
-  value       = "https://cloud.oracle.com/logging/log-groups"
+  value       = "https://cloud.oracle.com/logging/log-groups?compartment=${var.OCI_TENANCY_OCID}"
+  sensitive   = true
+}
+
+output "log_group_name" {
+  description = "OCI Log Group name for Tailscale logs"
+  value       = "${var.name}-tailscale-logs"
+}
+
+output "log_retention_days" {
+  description = "Log retention period in days"
+  value       = var.log_retention_days
 }
 
 output "verification_commands" {

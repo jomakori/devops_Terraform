@@ -181,8 +181,29 @@ ssh fedora@maklab-base0-vm.tailnet-name.ts.net
 ```
 
 ### View Logs
-- **OCI Logging**: Structured JSON logs for Tailscale setup
-- **Local Logs**: `/var/log/tailscale-setup.log` on VM
+
+The OCI Logging module (`oracle-terraform-modules/logging/oci`) is configured to collect Tailscale installation logs:
+
+```bash
+# View logs in OCI Console
+# Navigate to: Observability & Management → Logging → Log Groups → maklab-base0-tailscale-logs
+
+# Search logs via OCI CLI
+oci logging-search search-logs \
+  --search-query "search \"${var.OCI_TENANCY_OCID}/${var.name}-tailscale-logs\" | where component = 'tailscale'" \
+  --time-start 2024-01-01T00:00:00Z \
+  --time-end 2024-12-31T23:59:59Z
+
+# View local logs on VM
+ssh fedora@maklab-base0-vm.tailnet-name.ts.net
+cat /var/log/tailscale_install.log
+cat /var/log/tailscale/install.json  # JSON format for OCI Logging
+```
+
+**Log Locations:**
+- **OCI Logging**: `${var.name}-tailscale-logs` log group with 30-day retention
+- **Local Logs**: `/var/log/tailscale_install.log` (human-readable)
+- **JSON Logs**: `/var/log/tailscale/install.json` (structured for OCI Logging agent)
 - **Cloud-Init Logs**: `/var/log/cloud-init-output.log`
 
 ### Monitor Resources
@@ -286,7 +307,7 @@ make apply
 | Name | Source | Version |
 | ---- | ------ | ------- |
 | <a name="module_compute_instance"></a> [compute\_instance](#module\_compute\_instance) | oracle-terraform-modules/compute-instance/oci | ~> 2.4 |
-| <a name="module_tailscale_install"></a> [tailscale\_install](#module\_tailscale\_install) | tailscale/tailscale/cloudinit | ~> 0.0.11 |
+| <a name="module_logging"></a> [logging](#module\_logging) | oracle-terraform-modules/logging/oci | ~> 0.4 |
 | <a name="module_vcn"></a> [vcn](#module\_vcn) | oracle-terraform-modules/vcn/oci | ~> 3.0 |
 
 ## Resources
@@ -312,6 +333,7 @@ make apply
 | <a name="input_TAILSCALE_ID"></a> [TAILSCALE\_ID](#input\_TAILSCALE\_ID) | Tailscale Workspace ID | `string` | n/a | yes |
 | <a name="input_cidr_blocks"></a> [cidr\_blocks](#input\_cidr\_blocks) | CIDR blocks for networking | <pre>object({<br/>    vcn_cidr     = string<br/>    public_cidr  = string<br/>    private_cidr = string<br/>    global_cidr  = string<br/>  })</pre> | <pre>{<br/>  "global_cidr": "0.0.0.0/0",<br/>  "private_cidr": "10.0.2.0/24",<br/>  "public_cidr": "10.0.1.0/24",<br/>  "vcn_cidr": "10.0.0.0/16"<br/>}</pre> | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name (e.g., production, staging) | `string` | `"production"` | no |
+| <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | OCI Logging retention period in days | `number` | `30` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name for resources (e.g., maklab-base0) | `string` | `"maklab-base0"` | no |
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Project name for resource naming | `string` | `"oci-arm-vm"` | no |
 | <a name="input_region"></a> [region](#input\_region) | OCI region | `string` | `"us-ashburn-1"` | no |
@@ -327,6 +349,8 @@ make apply
 | <a name="output_doppler_secret_url"></a> [doppler\_secret\_url](#output\_doppler\_secret\_url) | URL to view the Tailscale auth key in Doppler |
 | <a name="output_emergency_access"></a> [emergency\_access](#output\_emergency\_access) | Emergency access instructions |
 | <a name="output_key_rotation_schedule"></a> [key\_rotation\_schedule](#output\_key\_rotation\_schedule) | Key rotation schedule information |
+| <a name="output_log_group_name"></a> [log\_group\_name](#output\_log\_group\_name) | OCI Log Group name for Tailscale logs |
+| <a name="output_log_retention_days"></a> [log\_retention\_days](#output\_log\_retention\_days) | Log retention period in days |
 | <a name="output_oci_logging_url"></a> [oci\_logging\_url](#output\_oci\_logging\_url) | URL to view logs in OCI Logging |
 | <a name="output_tailscale_device_name"></a> [tailscale\_device\_name](#output\_tailscale\_device\_name) | Tailscale device name for the VM |
 | <a name="output_verification_commands"></a> [verification\_commands](#output\_verification\_commands) | Commands to verify the setup |

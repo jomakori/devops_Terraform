@@ -55,6 +55,12 @@ variable "tailscale_key_expiry_days" {
   default     = 90
 }
 
+variable "log_retention_days" {
+  description = "OCI Logging retention period in days"
+  type        = number
+  default     = 30
+}
+
 variable "tcp_protocol" {
   description = "TCP protocol number"
   type        = string

@@ -87,51 +87,12 @@ resource "tailscale_tailnet_key" "vm_auth_key" {
   reusable      = true
 }
 
-# Tailscale - cloud-init configuration using official Tailscale Terraform module
-module "tailscale_install" {
-  source  = "tailscale/tailscale/cloudinit"
-  version = "~> 0.0.11"
-
-  accept_routes = true
-  auth_key      = tailscale_tailnet_key.vm_auth_key.key
-  enable_ssh    = true
-  hostname      = "${var.name}-vm"
-  max_retries   = 10
-  retry_delay   = 10
-
-  additional_parts = [
-    {
-      filename     = "network_ready.sh"
-      content_type = "text/x-shellscript"
-      content      = <<-EOT
-        #!/bin/sh
-        # Wait for network connectivity before proceeding
-        max_attempts=30
-        attempt=1
-        while [ $attempt -le $max_attempts ]; do
-          if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
-            echo "Network connectivity confirmed"
-            exit 0
-          fi
-          echo "Waiting for network connectivity... ($attempt/$max_attempts)"
-          sleep 2
-          attempt=$((attempt + 1))
-        done
-        echo "Failed to establish network connectivity after $max_attempts attempts"
-        exit 1
-      EOT
-    },
-    {
-      filename     = "udp_offloads.sh"
-      content_type = "text/x-shellscript"
-      content      = <<-EOT
-        #!/bin/sh
-        # Override script to avoid network device detection failures
-        echo "Skipping UDP offloads optimization for OCI instance"
-        exit 0
-      EOT
-    }
-  ]
+# Cloud-init - simple Tailscale installation
+locals {
+  cloud_init = templatefile("${path.module}/scripts/cloud-init.tftpl", {
+    auth_key = tailscale_tailnet_key.vm_auth_key.key
+    hostname = "${var.name}-vm"
+  })
 }
 
 # Compute - arm vm instance
@@ -149,7 +110,7 @@ module "compute_instance" {
   instance_flex_memory_in_gbs = 24
 
   ssh_public_keys            = ""
-  user_data                  = module.tailscale_install.rendered
+  user_data                  = base64encode(local.cloud_init)
   public_ip                  = "EPHEMERAL"
   block_storage_sizes_in_gbs = [200]
 
@@ -167,4 +128,27 @@ resource "doppler_secret" "tailscale_auth_key" {
   value = tailscale_tailnet_key.vm_auth_key.key
 
   depends_on = [tailscale_tailnet_key.vm_auth_key]
+}
+
+# OCI Logging - Log group for Tailscale installation
+module "logging" {
+  source  = "oracle-terraform-modules/logging/oci"
+  version = "~> 0.4"
+
+  compartment_id = var.OCI_TENANCY_OCID
+  tenancy_id     = var.OCI_TENANCY_OCID
+  service_logdef = {}
+
+  linux_logdef = {
+    tailscale_install = {
+      loggroup = "${var.name}-tailscale-logs"
+      dg       = "tailscale_install_logs"
+      path     = ["/var/log/tailscale_install.log", "/var/log/tailscale"]
+    }
+  }
+
+  log_retention_duration = var.log_retention_days
+  loggroup_tags          = var.tags
+
+  depends_on = [module.compute_instance]
 }
