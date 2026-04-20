@@ -68,9 +68,27 @@ variable "tcp_protocol" {
 }
 
 variable "vm_shape" {
-  description = "OCI VM shape for ARM instances"
+  description = "OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM), VM.Standard.E4.Flex (x86)"
   type        = string
   default     = "VM.Standard.A1.Flex"
+}
+
+variable "instance_ocpus" {
+  description = "Number of OCPUs for flexible shapes. Reduce if experiencing capacity issues."
+  type        = number
+  default     = 2
+}
+
+variable "instance_memory_gb" {
+  description = "Memory in GB for flexible shapes"
+  type        = number
+  default     = 12
+}
+
+variable "alternative_regions" {
+  description = "List of alternative regions to try if primary region has capacity issues"
+  type        = list(string)
+  default     = ["us-phoenix-1", "eu-frankfurt-1", "uk-london-1"]
 }
 
 # Secret vars

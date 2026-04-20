@@ -106,8 +106,8 @@ module "compute_instance" {
   subnet_ocids          = [module.vcn.subnet_id["public"]]
 
   shape                       = var.vm_shape
-  instance_flex_ocpus         = 4
-  instance_flex_memory_in_gbs = 24
+  instance_flex_ocpus         = 2
+  instance_flex_memory_in_gbs = 12
 
   ssh_public_keys            = ""
   user_data                  = base64encode(local.cloud_init)
@@ -121,8 +121,8 @@ module "compute_instance" {
 
 # Doppler - secret storage
 resource "doppler_secret" "tailscale_auth_key" {
-  project = var.name
-  config  = var.environment
+  project = "devops"
+  config  = "ci"
 
   name  = "TF_VAR_TAILSCALE_AUTH_KEY"
   value = tailscale_tailnet_key.vm_auth_key.key

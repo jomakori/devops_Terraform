@@ -16,4 +16,5 @@ provider "tailscale" {
 # Doppler Provider Configuration
 provider "doppler" {
   doppler_token = var.DOPPLER_TOKEN
+
 }
