@@ -96,7 +96,7 @@ locals {
 }
 
 # Compute - arm vm instance
-module "compute_instance" {
+module "vm" {
   source  = "oracle-terraform-modules/compute-instance/oci"
   version = "~> 2.4"
 
@@ -106,8 +106,8 @@ module "compute_instance" {
   subnet_ocids          = [module.vcn.subnet_id["public"]]
 
   shape                       = var.vm_shape
-  instance_flex_ocpus         = 2
-  instance_flex_memory_in_gbs = 12
+  instance_flex_ocpus         = var.vm_cpu
+  instance_flex_memory_in_gbs = var.vm_memory
 
   ssh_public_keys            = ""
   user_data                  = base64encode(local.cloud_init)
@@ -150,5 +150,5 @@ module "logging" {
   log_retention_duration = var.log_retention_days
   loggroup_tags          = var.tags
 
-  depends_on = [module.compute_instance]
+  depends_on = [module.vm]
 }

@@ -2,17 +2,17 @@
 
 output "vm_public_ip" {
   description = "Public IP address of the ARM VM"
-  value       = module.compute_instance.public_ip[0]
+  value       = module.vm.public_ip[0]
 }
 
 output "vm_private_ip" {
   description = "Private IP address of the ARM VM"
-  value       = module.compute_instance.private_ip[0]
+  value       = module.vm.private_ip[0]
 }
 
 output "vm_instance_id" {
   description = "Instance ID of the ARM VM"
-  value       = module.compute_instance.instance_id[0]
+  value       = module.vm.instance_id[0]
 }
 
 output "tailscale_device_name" {
@@ -54,7 +54,7 @@ ssh fedora@${var.name}-vm.tailnet-name.ts.net
 oci logging-search search-logs --query-string "component=tailscale"
 
 # Check VM status via OCI CLI
-oci compute instance get --instance-id ${module.compute_instance.instance_id[0]}
+oci compute instance get --instance-id ${module.vm.instance_id[0]}
 EOT
 }
 

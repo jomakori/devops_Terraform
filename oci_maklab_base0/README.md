@@ -306,9 +306,9 @@ make apply
 
 | Name | Source | Version |
 | ---- | ------ | ------- |
-| <a name="module_compute_instance"></a> [compute\_instance](#module\_compute\_instance) | oracle-terraform-modules/compute-instance/oci | ~> 2.4 |
 | <a name="module_logging"></a> [logging](#module\_logging) | oracle-terraform-modules/logging/oci | ~> 0.4 |
 | <a name="module_vcn"></a> [vcn](#module\_vcn) | oracle-terraform-modules/vcn/oci | ~> 3.0 |
+| <a name="module_vm"></a> [vm](#module\_vm) | oracle-terraform-modules/compute-instance/oci | ~> 2.4 |
 
 ## Resources
 
@@ -334,8 +334,6 @@ make apply
 | <a name="input_alternative_regions"></a> [alternative\_regions](#input\_alternative\_regions) | List of alternative regions to try if primary region has capacity issues | `list(string)` | <pre>[<br/>  "us-phoenix-1",<br/>  "eu-frankfurt-1",<br/>  "uk-london-1"<br/>]</pre> | no |
 | <a name="input_cidr_blocks"></a> [cidr\_blocks](#input\_cidr\_blocks) | CIDR blocks for networking | <pre>object({<br/>    vcn_cidr     = string<br/>    public_cidr  = string<br/>    private_cidr = string<br/>    global_cidr  = string<br/>  })</pre> | <pre>{<br/>  "global_cidr": "0.0.0.0/0",<br/>  "private_cidr": "10.0.2.0/24",<br/>  "public_cidr": "10.0.1.0/24",<br/>  "vcn_cidr": "10.0.0.0/16"<br/>}</pre> | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name (e.g., production, staging) | `string` | `"production"` | no |
-| <a name="input_instance_memory_gb"></a> [instance\_memory\_gb](#input\_instance\_memory\_gb) | Memory in GB for flexible shapes | `number` | `12` | no |
-| <a name="input_instance_ocpus"></a> [instance\_ocpus](#input\_instance\_ocpus) | Number of OCPUs for flexible shapes. Reduce if experiencing capacity issues. | `number` | `2` | no |
 | <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | OCI Logging retention period in days | `number` | `30` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name for resources (e.g., maklab-base0) | `string` | `"maklab-base0"` | no |
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Project name for resource naming | `string` | `"oci-arm-vm"` | no |
@@ -343,7 +341,9 @@ make apply
 | <a name="input_tags"></a> [tags](#input\_tags) | Global tags for all resources | `map(string)` | <pre>{<br/>  "environment": "development",<br/>  "managed_by": "terraform",<br/>  "project": "oci-arm-vm"<br/>}</pre> | no |
 | <a name="input_tailscale_key_expiry_days"></a> [tailscale\_key\_expiry\_days](#input\_tailscale\_key\_expiry\_days) | Tailscale auth key expiry in days | `number` | `90` | no |
 | <a name="input_tcp_protocol"></a> [tcp\_protocol](#input\_tcp\_protocol) | TCP protocol number | `string` | `"6"` | no |
-| <a name="input_vm_shape"></a> [vm\_shape](#input\_vm\_shape) | OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM), VM.Standard.E4.Flex (x86) | `string` | `"VM.Standard.A1.Flex"` | no |
+| <a name="input_vm_cpu"></a> [vm\_cpu](#input\_vm\_cpu) | Number of OCPUs for flexible shapes. Reduce if experiencing capacity issues. | `number` | `2` | no |
+| <a name="input_vm_memory"></a> [vm\_memory](#input\_vm\_memory) | Memory in GB for flexible shapes | `number` | `24` | no |
+| <a name="input_vm_shape"></a> [vm\_shape](#input\_vm\_shape) | OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM), VM.Standard.A2.Flex (ARM), VM.Standard.E4.Flex (x86) | `string` | `"VM.Standard.A2.Flex"` | no |
 
 ## Outputs
 

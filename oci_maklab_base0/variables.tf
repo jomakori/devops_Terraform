@@ -68,21 +68,21 @@ variable "tcp_protocol" {
 }
 
 variable "vm_shape" {
-  description = "OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM), VM.Standard.E4.Flex (x86)"
+  description = "OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM), VM.Standard.A2.Flex (ARM), VM.Standard.E4.Flex (x86)"
   type        = string
-  default     = "VM.Standard.A1.Flex"
+  default     = "VM.Standard.A2.Flex"
 }
 
-variable "instance_ocpus" {
+variable "vm_cpu" {
   description = "Number of OCPUs for flexible shapes. Reduce if experiencing capacity issues."
   type        = number
   default     = 2
 }
 
-variable "instance_memory_gb" {
+variable "vm_memory" {
   description = "Memory in GB for flexible shapes"
   type        = number
-  default     = 12
+  default     = 24
 }
 
 variable "alternative_regions" {
