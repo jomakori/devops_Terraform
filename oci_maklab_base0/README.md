@@ -298,8 +298,8 @@ make apply
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_doppler"></a> [doppler](#provider\_doppler) | 1.21.1 |
-| <a name="provider_oci"></a> [oci](#provider\_oci) | 8.5.0 |
+| <a name="provider_doppler"></a> [doppler](#provider\_doppler) | 1.21.2 |
+| <a name="provider_oci"></a> [oci](#provider\_oci) | 8.10.0 |
 | <a name="provider_tailscale"></a> [tailscale](#provider\_tailscale) | 0.28.0 |
 
 ## Modules
@@ -343,7 +343,7 @@ make apply
 | <a name="input_tcp_protocol"></a> [tcp\_protocol](#input\_tcp\_protocol) | TCP protocol number | `string` | `"6"` | no |
 | <a name="input_vm_cpu"></a> [vm\_cpu](#input\_vm\_cpu) | Number of OCPUs for flexible shapes. Reduce if experiencing capacity issues. | `number` | `2` | no |
 | <a name="input_vm_memory"></a> [vm\_memory](#input\_vm\_memory) | Memory in GB for flexible shapes | `number` | `12` | no |
-| <a name="input_vm_shape"></a> [vm\_shape](#input\_vm\_shape) | OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM), VM.Standard.A2.Flex (ARM), VM.Standard.E4.Flex (x86) | `string` | `"VM.Standard.A2.Flex"` | no |
+| <a name="input_vm_shape"></a> [vm\_shape](#input\_vm\_shape) | OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM - Free Tier, all regions), VM.Standard.A2.Flex (ARM - limited regions), VM.Standard.E4.Flex (x86) | `string` | `"VM.Standard.A1.Flex"` | no |
 
 ## Outputs
 

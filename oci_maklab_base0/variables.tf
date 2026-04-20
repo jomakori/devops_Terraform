@@ -62,9 +62,9 @@ variable "tcp_protocol" {
 }
 
 variable "vm_shape" {
-  description = "OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM), VM.Standard.A2.Flex (ARM), VM.Standard.E4.Flex (x86)"
+  description = "OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM - Free Tier, all regions), VM.Standard.A2.Flex (ARM - limited regions), VM.Standard.E4.Flex (x86)"
   type        = string
-  default     = "VM.Standard.A2.Flex"
+  default     = "VM.Standard.A1.Flex"
 }
 
 variable "vm_cpu" {
