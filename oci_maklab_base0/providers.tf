@@ -2,7 +2,7 @@
 provider "oci" {
   fingerprint  = var.OCI_FINGERPRINT
   private_key  = var.OCI_PRIVATE_KEY
-  region       = var.region
+  region       = var.project_config["region"]
   tenancy_ocid = var.OCI_TENANCY_OCID
   user_ocid    = var.OCI_USER_OCID
 }

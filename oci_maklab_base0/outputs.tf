@@ -3,7 +3,7 @@
 # Shape validation output - will fail during plan if shape is not available
 output "shape_validation" {
   description = "Validation that the selected VM shape is available in the region"
-  value       = local.shape_available ? "Shape '${var.vm_shape}' is available in ${var.region}" : "ERROR: Shape '${var.vm_shape}' is not available in region '${var.region}'. Run: oci compute shape list --compartment-id <compartment-id> --shape ${var.vm_shape}"
+  value       = local.shape_available ? "Shape '${var.vm_config["shape"]}' is available in ${var.project_config["region"]}" : "ERROR: Shape '${var.vm_config["shape"]}' is not available in region '${var.project_config["region"]}'. Run: oci compute shape list --compartment-id <compartment-id> --shape ${var.vm_config["shape"]}"
   sensitive   = true
 }
 
@@ -24,7 +24,7 @@ output "vm_instance_id" {
 
 output "tailscale_device_name" {
   description = "Tailscale device name for the VM"
-  value       = "${var.name}-vm"
+  value       = "${var.project_config["name"]}-vm"
 }
 
 output "doppler_secret_url" {
@@ -40,12 +40,12 @@ output "oci_logging_url" {
 
 output "log_group_name" {
   description = "OCI Log Group name for Tailscale logs"
-  value       = "${var.name}-tailscale-logs"
+  value       = "${var.project_config["name"]}-tailscale-logs"
 }
 
 output "log_retention_days" {
   description = "Log retention period in days"
-  value       = var.log_retention_days
+  value       = var.vm_config["log_retention_days"]
 }
 
 output "verification_commands" {
@@ -55,7 +55,7 @@ output "verification_commands" {
 tailscale status
 
 # SSH via Tailscale
-ssh fedora@${var.name}-vm.tailnet-name.ts.net
+ssh fedora@${var.project_config["name"]}-vm.tailnet-name.ts.net
 
 # View OCI Logging
 oci logging-search search-logs --query-string "component=tailscale"
@@ -71,7 +71,7 @@ output "emergency_access" {
 If Tailscale connection fails:
 1. Use OCI Serial Console:
    - Navigate to OCI Console → Compute → Instances
-   - Select "${var.name}-vm"
+    - Select "${var.project_config["name"]}-vm"
    - Click "Serial Console Connection"
    - Login with instance credentials
 

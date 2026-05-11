@@ -332,18 +332,10 @@ make apply
 | <a name="input_TAILSCALE_API_KEY"></a> [TAILSCALE\_API\_KEY](#input\_TAILSCALE\_API\_KEY) | Tailscale API key for managing tailscale provider | `string` | n/a | yes |
 | <a name="input_TAILSCALE_AUTH_KEY"></a> [TAILSCALE\_AUTH\_KEY](#input\_TAILSCALE\_AUTH\_KEY) | Tailscale Auth Key for creating new keys for VMs | `string` | n/a | yes |
 | <a name="input_TAILSCALE_ID"></a> [TAILSCALE\_ID](#input\_TAILSCALE\_ID) | Tailscale Workspace ID | `string` | n/a | yes |
-| <a name="input_alternative_regions"></a> [alternative\_regions](#input\_alternative\_regions) | List of alternative regions to try if primary region has capacity issues | `list(string)` | <pre>[<br/>  "us-phoenix-1",<br/>  "eu-frankfurt-1",<br/>  "uk-london-1"<br/>]</pre> | no |
 | <a name="input_cidr_blocks"></a> [cidr\_blocks](#input\_cidr\_blocks) | CIDR blocks for networking | <pre>object({<br/>    vcn_cidr     = string<br/>    public_cidr  = string<br/>    private_cidr = string<br/>    global_cidr  = string<br/>  })</pre> | <pre>{<br/>  "global_cidr": "0.0.0.0/0",<br/>  "private_cidr": "10.0.2.0/24",<br/>  "public_cidr": "10.0.1.0/24",<br/>  "vcn_cidr": "10.0.0.0/16"<br/>}</pre> | no |
-| <a name="input_environment"></a> [environment](#input\_environment) | Environment name (e.g., production, staging) | `string` | `"production"` | no |
-| <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | OCI Logging retention period in days | `number` | `30` | no |
-| <a name="input_name"></a> [name](#input\_name) | Name for resources (e.g., maklab-base0) | `string` | `"maklab-base0"` | no |
-| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Project name for resource naming | `string` | `"oci-arm-vm"` | no |
-| <a name="input_region"></a> [region](#input\_region) | OCI region | `string` | `"us-ashburn-1"` | no |
+| <a name="input_project_config"></a> [project\_config](#input\_project\_config) | Common project configuration values for resource naming and identity | `map(string)` | <pre>{<br/>  "environment": "production",<br/>  "name": "maklab-base0",<br/>  "project_name": "oci-arm-vm",<br/>  "region": "us-ashburn-1",<br/>  "tcp_protocol": "6"<br/>}</pre> | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Global tags for all resources | `map(string)` | <pre>{<br/>  "environment": "development",<br/>  "managed_by": "terraform",<br/>  "project": "oci-arm-vm"<br/>}</pre> | no |
-| <a name="input_tcp_protocol"></a> [tcp\_protocol](#input\_tcp\_protocol) | TCP protocol number | `string` | `"6"` | no |
-| <a name="input_vm_cpu"></a> [vm\_cpu](#input\_vm\_cpu) | Number of OCPUs for flexible shapes. Reduce if experiencing capacity issues. | `number` | `2` | no |
-| <a name="input_vm_memory"></a> [vm\_memory](#input\_vm\_memory) | Memory in GB for flexible shapes | `number` | `12` | no |
-| <a name="input_vm_shape"></a> [vm\_shape](#input\_vm\_shape) | OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM - Free Tier, all regions), VM.Standard.A2.Flex (ARM - limited regions), VM.Standard.E4.Flex (x86) | `string` | `"VM.Standard.A1.Flex"` | no |
+| <a name="input_vm_config"></a> [vm\_config](#input\_vm\_config) | VM compute configuration (shape, cpu, memory) | `map(any)` | <pre>{<br/>  "cpu": 2,<br/>  "log_retention_days": 30,<br/>  "memory": 24,<br/>  "shape": "VM.Standard.A1.Flex"<br/>}</pre> | no |
 
 ## Outputs
 

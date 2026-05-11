@@ -1,4 +1,28 @@
-#  Common vars
+#  config vars
+variable "project_config" {
+  description = "Common project configuration values for resource naming and identity"
+  type        = map(string)
+  default = {
+    environment  = "production"
+    name         = "maklab-base0"
+    project_name = "oci-arm-vm"
+    region       = "us-ashburn-1"
+    tcp_protocol = "6"
+  }
+}
+
+variable "vm_config" {
+  description = "VM compute configuration (shape, cpu, memory)"
+  type        = map(any)
+  default = {
+    shape              = "VM.Standard.A1.Flex"
+    cpu                = 2
+    memory             = 24
+    log_retention_days = 30
+  }
+}
+
+#  other vars
 variable "cidr_blocks" {
   description = "CIDR blocks for networking"
   type = object({
@@ -15,30 +39,6 @@ variable "cidr_blocks" {
   }
 }
 
-variable "environment" {
-  description = "Environment name (e.g., production, staging)"
-  type        = string
-  default     = "production"
-}
-
-variable "name" {
-  description = "Name for resources (e.g., maklab-base0)"
-  type        = string
-  default     = "maklab-base0"
-}
-
-variable "project_name" {
-  description = "Project name for resource naming"
-  type        = string
-  default     = "oci-arm-vm"
-}
-
-variable "region" {
-  description = "OCI region"
-  type        = string
-  default     = "us-ashburn-1"
-}
-
 variable "tags" {
   description = "Global tags for all resources"
   type        = map(string)
@@ -49,43 +49,7 @@ variable "tags" {
   }
 }
 
-variable "log_retention_days" {
-  description = "OCI Logging retention period in days"
-  type        = number
-  default     = 30
-}
-
-variable "tcp_protocol" {
-  description = "TCP protocol number"
-  type        = string
-  default     = "6"
-}
-
-variable "vm_shape" {
-  description = "OCI VM shape (ARM or x86). Common options: VM.Standard.A1.Flex (ARM - Free Tier, all regions), VM.Standard.A2.Flex (ARM - limited regions), VM.Standard.E4.Flex (x86)"
-  type        = string
-  default     = "VM.Standard.A1.Flex"
-}
-
-variable "vm_cpu" {
-  description = "Number of OCPUs for flexible shapes. Reduce if experiencing capacity issues."
-  type        = number
-  default     = 2
-}
-
-variable "vm_memory" {
-  description = "Memory in GB for flexible shapes"
-  type        = number
-  default     = 12
-}
-
-variable "alternative_regions" {
-  description = "List of alternative regions to try if primary region has capacity issues"
-  type        = list(string)
-  default     = ["us-phoenix-1", "eu-frankfurt-1", "uk-london-1"]
-}
-
-# Secret vars
+# secret vars
 variable "DOPPLER_TOKEN" {
   description = "Doppler token for accessing secrets"
   type        = string
