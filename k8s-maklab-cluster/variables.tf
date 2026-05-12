@@ -1,4 +1,4 @@
-/* 
+/*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ Cluster variables                                                        │
   └──────────────────────────────────────────────────────────────────────────┘
@@ -11,13 +11,6 @@ variable "name" {
 variable "kubernetes_version" {
   description = "Kubernetes version to use for k8s cluster. For latest version, run `minikube config defaults kubernetes-version`"
   default     = "v1.33.1"
-}
-
-variable "worker_nodes" {
-  description = "Number of machine nodes in k8s cluster"
-  type        = number
-  default     = 3
-
 }
 
 variable "k8s_cidr_ranges" {
@@ -35,7 +28,28 @@ variable "k8s_config_path" {
   default     = "~/.kube/config"
 }
 
-/* 
+variable "cluster_config" {
+  description = "Cluster-wide configuration for the minikube cluster"
+  type        = map(string)
+  default = {
+    cni               = "flannel"
+    container_runtime = "containerd"
+    driver            = "krunkit"
+  }
+}
+
+variable "vm_config" {
+  description = "VM resource settings for minikube cluster nodes"
+  type        = map(string)
+  default = {
+    cpus         = "max"
+    memory       = "15g"
+    disk_size    = "10000mb"
+    worker_nodes = "4"
+  }
+}
+
+/*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ GitOps variables - Local                                                 │
   └──────────────────────────────────────────────────────────────────────────┘
@@ -59,7 +73,7 @@ variable "gitops_services_path" {
   description = "Path to ArgoCD App manifests for Services"
   default     = "services/argocd-appset"
 }
-/* 
+/*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ GitOps Variables - Doppler                                               │
   |                                                                          |
