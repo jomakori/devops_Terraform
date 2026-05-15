@@ -50,7 +50,7 @@ No modules.
 | <a name="input_k8s_cidr_ranges"></a> [k8s\_cidr\_ranges](#input\_k8s\_cidr\_ranges) | Mapping of CIDR ranges for K8s pods + services | `map(any)` | <pre>{<br/>  "pods": "10.0.0.0/16",<br/>  "services": "127.0.0.0/16"<br/>}</pre> | no |
 | <a name="input_k8s_config_path"></a> [k8s\_config\_path](#input\_k8s\_config\_path) | Kubernetes config file path | `string` | `"~/.kube/config"` | no |
 | <a name="input_kubernetes_version"></a> [kubernetes\_version](#input\_kubernetes\_version) | Kubernetes version to use for k8s cluster. For latest version, run `minikube config defaults kubernetes-version` | `string` | `"v1.35.1"` | no |
-| <a name="input_name"></a> [name](#input\_name) | Namespace for workspace resources | `string` | `"maklab-cluster"` | no |
+| <a name="input_name"></a> [name](#input\_name) | Namespace for workspace resources | `string` | `"jmak-lab"` | no |
 | <a name="input_vm_config"></a> [vm\_config](#input\_vm\_config) | VM resource settings for minikube cluster nodes | `map(string)` | <pre>{<br/>  "cpus": "max",<br/>  "disk_size": "10000mb",<br/>  "memory": "15g",<br/>  "worker_nodes": "4"<br/>}</pre> | no |
 
 ## Outputs

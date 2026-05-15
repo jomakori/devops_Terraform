@@ -1,6 +1,6 @@
 resource "minikube_cluster" "maklab_cluster" {
   # Cluster Configuration
-  cluster_name      = var.name
+  cluster_name      = "${var.name}-cluster"
   cni               = var.cluster_config["cni"]
   container_runtime = var.cluster_config["container_runtime"]
   driver            = var.cluster_config["driver"]

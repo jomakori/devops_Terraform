@@ -5,7 +5,7 @@
  */
 variable "name" {
   description = "Namespace for workspace resources"
-  default     = "maklab-cluster"
+  default     = "jmak-lab"
 }
 
 variable "kubernetes_version" {
