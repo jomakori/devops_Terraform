@@ -39,9 +39,12 @@ provider "minikube" {
 
 # Helm
 provider "helm" {
+  kubernetes = {
+    config_path = "~/.kube/config"
+  }
 }
 
 # kubectl
 provider "kubectl" {
-  config_path = var.k8s_config_path
+  load_config_file = true
 }
