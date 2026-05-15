@@ -82,7 +82,7 @@ variable "gitops_services_path" {
  */
 
 ## Template Vars
-variable "TAILSCALE_TUNNEL" {
+variable "TAILSCALE_HOST" {
   description = "URL to Tailscale Tunnel"
 }
 

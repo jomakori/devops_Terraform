@@ -39,7 +39,7 @@ No modules.
 | <a name="input_MONGODB_USER"></a> [MONGODB\_USER](#input\_MONGODB\_USER) | MongoDB user for service access | `any` | n/a | yes |
 | <a name="input_PG_PW"></a> [PG\_PW](#input\_PG\_PW) | Doppler var - Postgres password for app access | `any` | n/a | yes |
 | <a name="input_PG_USER"></a> [PG\_USER](#input\_PG\_USER) | Doppler var - Postgres user for app access | `any` | n/a | yes |
-| <a name="input_TAILSCALE_TUNNEL"></a> [TAILSCALE\_TUNNEL](#input\_TAILSCALE\_TUNNEL) | URL to Tailscale Tunnel | `any` | n/a | yes |
+| <a name="input_TAILSCALE_HOST"></a> [TAILSCALE\_HOST](#input\_TAILSCALE\_HOST) | URL to Tailscale Tunnel | `any` | n/a | yes |
 | <a name="input_TAPIR_SSO_CLIENT_ID"></a> [TAPIR\_SSO\_CLIENT\_ID](#input\_TAPIR\_SSO\_CLIENT\_ID) | Client ID for Tailscale | `any` | n/a | yes |
 | <a name="input_TAPIR_SSO_CLIENT_SECRET"></a> [TAPIR\_SSO\_CLIENT\_SECRET](#input\_TAPIR\_SSO\_CLIENT\_SECRET) | Client Secret for Tailscale | `any` | n/a | yes |
 | <a name="input_cluster_config"></a> [cluster\_config](#input\_cluster\_config) | Cluster-wide configuration for the minikube cluster | `map(string)` | <pre>{<br/>  "cni": "flannel",<br/>  "container_runtime": "containerd",<br/>  "driver": "krunkit"<br/>}</pre> | no |
