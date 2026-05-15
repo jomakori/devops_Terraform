@@ -6,7 +6,7 @@ locals {
 output "kubeconfig" {
   description = "Kubeconfig for accessing the minikube cluster via Tailscale tunnel"
   sensitive   = true
-  value = <<-EOF
+  value       = <<-EOF
 apiVersion: v1
 kind: Config
 current-context: ${local.cluster_name}

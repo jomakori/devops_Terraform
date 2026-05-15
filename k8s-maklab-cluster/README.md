@@ -14,6 +14,7 @@
 
 | Name | Version |
 | ---- | ------- |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.17.0 |
 | <a name="provider_minikube"></a> [minikube](#provider\_minikube) | >= 0.6.0 |
 
 ## Modules
@@ -24,6 +25,7 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
+| [helm_release.argocd](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [minikube_cluster.maklab_cluster](https://registry.terraform.io/providers/scott-the-programmer/minikube/latest/docs/resources/cluster) | resource |
 
 ## Inputs
