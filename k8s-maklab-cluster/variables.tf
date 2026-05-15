@@ -10,7 +10,7 @@ variable "name" {
 
 variable "kubernetes_version" {
   description = "Kubernetes version to use for k8s cluster. For latest version, run `minikube config defaults kubernetes-version`"
-  default     = "v1.33.1"
+  default     = "v1.35.1"
 }
 
 variable "k8s_cidr_ranges" {
