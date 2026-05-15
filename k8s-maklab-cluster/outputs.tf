@@ -13,7 +13,8 @@ output "kubeconfig" {
       {
         name = local.cluster_name
         cluster = {
-          server                       = "https://${var.name}.${var.TAILSCALE_TUNNEL}:8443"
+          # Tailscale serve forwards :443 → socat → minikube API server (port 443, not 8443)
+          server                       = "https://${var.TAILSCALE_TUNNEL}:443"
           "certificate-authority-data" = base64encode(minikube_cluster.maklab_cluster.cluster_ca_certificate)
         }
       }
