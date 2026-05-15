@@ -8,7 +8,7 @@ resource "minikube_cluster" "maklab_cluster" {
 
   # Access Configuration
   # TAILSCALE_HOST is the full FQDN for remote access
-  apiserver_names = [var.TAILSCALE_HOST]
+  apiserver_names = ["${var.name}.${var.TAILSCALE_HOST}"]
 
   # Node Configuration
   cpus      = var.vm_config["cpus"]
