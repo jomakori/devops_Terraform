@@ -8,8 +8,8 @@ No requirements.
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.41.0 |
 
 ## Modules
 
@@ -18,7 +18,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_ecr_lifecycle_policy.image_removal_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecr_lifecycle_policy) | resource |
 | [aws_ecr_repository.myrepository](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecr_repository) | resource |
 

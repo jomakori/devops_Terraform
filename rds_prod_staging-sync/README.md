@@ -8,7 +8,7 @@ No requirements.
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
 | <a name="provider_demo"></a> [demo](#provider\_demo) | n/a |
 | <a name="provider_null"></a> [null](#provider\_null) | n/a |
@@ -16,7 +16,7 @@ No requirements.
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_demo_app_prod_db_cluster"></a> [demo\_app\_prod\_db\_cluster](#module\_demo\_app\_prod\_db\_cluster) | cloudposse/rds-cluster/aws | 1.9.0 |
 | <a name="module_demo_app_staging_db_cluster"></a> [demo\_app\_staging\_db\_cluster](#module\_demo\_app\_staging\_db\_cluster) | cloudposse/rds-cluster/aws | 1.9.0 |
 | <a name="module_shared_rds_sg"></a> [shared\_rds\_sg](#module\_shared\_rds\_sg) | terraform-aws-modules/security-group/aws | 4.1.0 |
@@ -26,7 +26,7 @@ No requirements.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_route.rds_routes](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route) | resource |
 | [null_resource.update_doppler_endpoint](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
@@ -36,7 +36,7 @@ No requirements.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_ACN_MODULES_TOKEN"></a> [ACN\_MODULES\_TOKEN](#input\_ACN\_MODULES\_TOKEN) | n/a | `string` | n/a | yes |
 | <a name="input_DB_PASSWORD"></a> [DB\_PASSWORD](#input\_DB\_PASSWORD) | n/a | `string` | n/a | yes |
 | <a name="input_DB_USER"></a> [DB\_USER](#input\_DB\_USER) | n/a | `string` | n/a | yes |

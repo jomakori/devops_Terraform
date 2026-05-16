@@ -109,14 +109,7 @@ variable "GRAFANA_PW" {
   description = "Doppler var - Grafana admin password"
   sensitive   = true
 }
-variable "TAPIR_SSO_CLIENT_ID" {
-  description = "Client ID for Tailscale"
-  sensitive   = true
-}
-variable "TAPIR_SSO_CLIENT_SECRET" {
-  description = "Client Secret for Tailscale"
-  sensitive   = true
-}
+
 variable "MONGODB_HOST" {
   description = "MongoDB host for service access"
 }

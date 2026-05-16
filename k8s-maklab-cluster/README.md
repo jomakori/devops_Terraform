@@ -15,6 +15,7 @@
 | Name | Version |
 | ---- | ------- |
 | <a name="provider_helm"></a> [helm](#provider\_helm) | 3.1.1 |
+| <a name="provider_kubectl"></a> [kubectl](#provider\_kubectl) | 1.19.0 |
 | <a name="provider_minikube"></a> [minikube](#provider\_minikube) | 0.6.0 |
 
 ## Modules
@@ -26,6 +27,7 @@ No modules.
 | Name | Type |
 | ---- | ---- |
 | [helm_release.argocd](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [kubectl_manifest.services](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest) | resource |
 | [minikube_cluster.maklab_cluster](https://registry.terraform.io/providers/scott-the-programmer/minikube/latest/docs/resources/cluster) | resource |
 
 ## Inputs
@@ -42,8 +44,6 @@ No modules.
 | <a name="input_PG_PW"></a> [PG\_PW](#input\_PG\_PW) | Doppler var - Postgres password for app access | `any` | n/a | yes |
 | <a name="input_PG_USER"></a> [PG\_USER](#input\_PG\_USER) | Doppler var - Postgres user for app access | `any` | n/a | yes |
 | <a name="input_TAILSCALE_HOST"></a> [TAILSCALE\_HOST](#input\_TAILSCALE\_HOST) | URL to Tailscale Tunnel | `any` | n/a | yes |
-| <a name="input_TAPIR_SSO_CLIENT_ID"></a> [TAPIR\_SSO\_CLIENT\_ID](#input\_TAPIR\_SSO\_CLIENT\_ID) | Client ID for Tailscale | `any` | n/a | yes |
-| <a name="input_TAPIR_SSO_CLIENT_SECRET"></a> [TAPIR\_SSO\_CLIENT\_SECRET](#input\_TAPIR\_SSO\_CLIENT\_SECRET) | Client Secret for Tailscale | `any` | n/a | yes |
 | <a name="input_cluster_config"></a> [cluster\_config](#input\_cluster\_config) | Cluster-wide configuration for the minikube cluster | `map(string)` | <pre>{<br/>  "cni": "flannel",<br/>  "container_runtime": "containerd",<br/>  "driver": "krunkit"<br/>}</pre> | no |
 | <a name="input_gitops_apps_path"></a> [gitops\_apps\_path](#input\_gitops\_apps\_path) | Path to ArgoCD App manifests for Apps | `string` | `"apps/argocd-appset"` | no |
 | <a name="input_gitops_branch"></a> [gitops\_branch](#input\_gitops\_branch) | Branch to follow for GitOps deployment | `string` | `"HEAD"` | no |

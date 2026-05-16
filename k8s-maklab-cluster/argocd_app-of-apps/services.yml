@@ -38,10 +38,6 @@ spec:
           value: ${mongodb_user}
         - name: mongoDBCreds.pw
           value: ${mongodb_pw}
-        - name: tapir.sso_clientID
-          value: "${tapir_sso_client_id}"
-        - name: tapir.sso_clientSecret
-          value: "${tapir_sso_client_secret}"
 
   destination:
     server: "https://kubernetes.default.svc"

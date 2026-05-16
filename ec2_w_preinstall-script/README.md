@@ -107,20 +107,20 @@ doppler run --command='terraform plan'
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.68.0 |
-| <a name="provider_tls"></a> [tls](#provider\_tls) | 4.0.6 |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
+| <a name="provider_tls"></a> [tls](#provider\_tls) | n/a |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_compliance_bucket"></a> [compliance\_bucket](#module\_compliance\_bucket) | terraform-aws-modules/s3-bucket/aws | n/a |
 | <a name="module_ec2-ami-snapshot"></a> [ec2-ami-snapshot](#module\_ec2-ami-snapshot) | cloudposse/backup/aws | n/a |
 | <a name="module_ec2-gateways"></a> [ec2-gateways](#module\_ec2-gateways) | cloudposse/ec2-instance/aws | n/a |
@@ -128,7 +128,7 @@ doppler run --command='terraform plan'
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_iam_policy.compliance_bucket_permission](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
 | [aws_key_pair.pubkey](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/key_pair) | resource |
 | [aws_s3_object.linux_scripts](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_object) | resource |
@@ -144,7 +144,7 @@ doppler run --command='terraform plan'
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_POWERBI_CLIENT_ID"></a> [POWERBI\_CLIENT\_ID](#input\_POWERBI\_CLIENT\_ID) | PowerBI Credentials for script | `any` | n/a | yes |
 | <a name="input_POWERBI_CLIENT_SECRET"></a> [POWERBI\_CLIENT\_SECRET](#input\_POWERBI\_CLIENT\_SECRET) | PowerBI Credentials for script | `any` | n/a | yes |
 | <a name="input_POWERBI_RECOVER_KEY"></a> [POWERBI\_RECOVER\_KEY](#input\_POWERBI\_RECOVER\_KEY) | PowerBI Credentials for script | `any` | n/a | yes |
@@ -160,7 +160,7 @@ doppler run --command='terraform plan'
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_gateway_pem_keys"></a> [gateway\_pem\_keys](#output\_gateway\_pem\_keys) | Access PEM key via Secrets Manager - used to unveil password |
 | <a name="output_gateway_public_ips"></a> [gateway\_public\_ips](#output\_gateway\_public\_ips) | Public IPs for the EC2 Gateways |
 | <a name="output_gateway_user"></a> [gateway\_user](#output\_gateway\_user) | Login Username for RDP |

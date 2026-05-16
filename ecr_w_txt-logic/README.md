@@ -13,7 +13,7 @@
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.0 |
 
 ## Providers
@@ -23,7 +23,7 @@ No providers.
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_resources"></a> [resources](#module\_resources) | ./resources | n/a |
 
 ## Resources
