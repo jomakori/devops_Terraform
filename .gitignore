@@ -13,3 +13,4 @@ venv
 **terraform.lock.hcl
 sleep_clouddesktops.zip
 **run-continuation
+**.fresh/
