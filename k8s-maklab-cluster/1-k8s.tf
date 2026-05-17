@@ -17,7 +17,6 @@ resource "minikube_cluster" "maklab_cluster" {
   nodes     = tonumber(var.vm_config["worker_nodes"])
 
   addons = [
-    "metrics-server",
     "nvidia-device-plugin",
     "storage-provisioner-rancher"
   ]
@@ -38,7 +37,9 @@ data:
     .:53 {
         log
         errors
-        health { lameduck 5s }
+        health {
+           lameduck 5s
+        }
         ready
         kubernetes cluster.local in-addr.arpa ip6.arpa {
            pods insecure
@@ -75,7 +76,7 @@ spec:
     kind: Deployment
     name: coredns
   minReplicas: 2
-  maxReplicas: 4
+  maxReplicas: 6
   metrics:
     - type: Resource
       resource:
