@@ -17,7 +17,6 @@ resource "minikube_cluster" "maklab_cluster" {
   nodes     = tonumber(var.vm_config["worker_nodes"])
 
   addons = [
-    "nvidia-device-plugin",
     "storage-provisioner-rancher"
   ]
 }

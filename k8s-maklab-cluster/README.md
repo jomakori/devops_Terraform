@@ -1,5 +1,153 @@
 # k8s-maklab-cluster
 
+Terraform-managed local Minikube Kubernetes cluster for the **jmak-lab** environment, deployed via the krunkit driver on macOS and orchestrated entirely through ArgoCD GitOps.
+
+## Architecture
+
+The infrastructure is split into three Terraform files, each building on the previous:
+
+### 1. Cluster — [`1-k8s.tf`](1-k8s.tf)
+
+| Setting | Value |
+|---------|-------|
+| Kubernetes version | `v1.35.1` |
+| Nodes | 4 workers |
+| Driver | krunkit (macOS VM) |
+| CNI | flannel |
+| Container runtime | containerd |
+| API server | Tailscale FQDN for remote access |
+| Addons | storage-provisioner-rancher |
+
+**CoreDNS hardening** — The cluster applies production-grade DNS reliability:
+
+- **Resource bounds** — requests (100m CPU / 70Mi memory) and limits (200m CPU / 150Mi memory) prevent starvation and noisy-neighbor problems.
+- **HPA** — autoscales CoreDNS from 2–6 replicas at 70% CPU or 80% memory utilization.
+- **Pod anti-affinity** — prefers spreading CoreDNS pods across distinct nodes (`kubernetes.io/hostname`).
+- **PodDisruptionBudget** — guarantees at least 1 CoreDNS replica stays available during node maintenance.
+
+### 2. Managed Services — [`2-managed_services.tf`](2-managed_services.tf)
+
+A single Helm release bootstraps **ArgoCD** (since ArgoCD cannot manage itself). Configuration:
+
+| Setting | Value |
+|---------|-------|
+| Chart | argo-cd from `argo-helm` |
+| Namespace | `argocd` |
+| Ingress | Disabled (accessed via `kubectl port-forward`) |
+| Service type | NodePort |
+| Autoscaling | Enabled (controller + repoServer, min 1 replica, 70% CPU/memory targets) |
+| Web terminal | Enabled (`exec.enabled: true`) |
+| Server insecure | `true` (for local port-forward) |
+
+Values file: [`helm/argocd-values.yaml`](helm/argocd-values.yaml)
+
+### 3. GitOps — [`3-gitops.tf`](3-gitops.tf)
+
+Uses the **App-of-Apps** pattern to let ArgoCD manage everything beyond itself. Two Application manifests split the cluster into distinct ownership:
+
+- **Services** — 3rd-party services (Grafana, Postgres operator, MongoDB, etc.) consumed as managed dependencies. Credentials (Grafana admin, Postgres user/pw, MongoDB host/user/pw) are injected as Helm template parameters from Terraform variables. Synced from `services/argocd-appset/` in the [gke_GitOps](https://github.com/jomakori/gke_GitOps) repo.
+- **Apps** — my own application workloads deployed on top of those services. Environment-scoped secrets (Doppler tokens for staging + production) are passed through for each app. Synced from `apps/argocd-appset/`.
+
+## GitOps Flow
+
+```
+Terraform (this repo)
+  │
+  ├── minikube_cluster.maklab_cluster     ← provisions the K8s cluster
+  ├── helm_release.argocd                 ← installs ArgoCD
+  ├── kubectl_manifest.services           ← creates the "services" ArgoCD Application
+  └── kubectl_manifest.apps              ← creates the "apps" ArgoCD Application
+        │                                       │
+        │                                       ▼
+        │                               gke_GitOps repo
+        │                                 ├── services/argocd-appset/      ← 3rd-party infra
+        │                                 │     └── Grafana + Loki + Promtail
+        │                                 │         CloudNative-PG (Postgres operator)
+        │                                 │         MongoDB
+        │                                 │         … other shared services
+        │                                 │
+        │                                 └── apps/argocd-appset/         ← my own workloads
+        │                                       └── Helm charts
+```
+
+Changes to the GitOps repo are automatically synced by ArgoCD (prune + self-heal enabled with exponential backoff retry).
+
+## Secrets Management
+
+Secrets are injected via **Doppler** at `terraform apply` time using `TF_VAR_` environment variables. Never committed to the repo.
+
+| Variable | Source | Used By |
+|----------|--------|---------|
+| `DOPPLER_PROD_TOKEN` | Doppler | App workloads (prod env) |
+| `DOPPLER_STAGING_TOKEN` | Doppler | App workloads (staging env) |
+| `GRAFANA_ADMIN` / `GRAFANA_PW` | Doppler | Grafana admin credentials |
+| `PG_USER` / `PG_PW` | Doppler | Postgres app credentials |
+| `MONGODB_HOST` / `MONGODB_USER` / `MONGODB_PW` | Doppler | MongoDB access |
+| `TAILSCALE_HOST` | Tailscale | Cluster API server FQDN |
+
+## Remote Access
+
+The cluster API server is exposed via a Tailscale tunnel. The `kubeconfig` output embeds:
+- Server: `https://{name}.{TAILSCALE_HOST}:443`
+- CA certificate, client certificate, and client key (all base64-encoded)
+
+To use:
+```bash
+terraform output -raw kubeconfig > ~/.kube/jmak-lab-config
+export KUBECONFIG=~/.kube/jmak-lab-config
+kubectl get nodes
+```
+
+## Prerequisites
+
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.6
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/) with [krunkit driver](https://minikube.sigs.k8s.io/docs/drivers/krunkit/)
+- [Tailscale](https://tailscale.com/) for remote node access
+- A [Terraform Cloud](https://app.terraform.io/) account (workspace: `k8s-maklab-cluster` in org `tf_jmakori`)
+- [Doppler CLI](https://docs.doppler.com/docs/cli) (for injecting secrets)
+
+## Usage
+
+```bash
+# Authenticate with Terraform Cloud
+terraform login
+
+# Set Doppler variables
+doppler setup
+
+# Plan & apply
+terraform plan
+terraform apply
+```
+
+After apply, ArgoCD will be available at `localhost:8080`:
+```bash
+kubectl port-forward -n argocd svc/argo-cd-argocd-server 8080:80
+```
+
+The initial ArgoCD password is the auto-generated pod name:
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+```
+
+## Project Structure
+
+```
+.
+├── 1-k8s.tf                      # Minikube cluster + CoreDNS hardening
+├── 2-managed_services.tf         # ArgoCD Helm release
+├── 3-gitops.tf                   # App-of-Apps manifests
+├── variables.tf                  # All input variables
+├── outputs.tf                    # Kubeconfig output with Tailscale endpoint
+├── versions.tf                   # Provider versions + Terraform Cloud config
+├── helm/
+│   └── argocd-values.yaml        # ArgoCD Helm overrides
+├── argocd_app-of-apps/
+│   ├── services.yml              # Application template for 3rd-party services
+│   └── apps.yml                  # Application template for my own workloads
+└── README.md
+```
+
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
@@ -27,6 +175,10 @@ No modules.
 | Name | Type |
 | ---- | ---- |
 | [helm_release.argocd](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [kubectl_manifest.coredns_config](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest) | resource |
+| [kubectl_manifest.coredns_deployment](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest) | resource |
+| [kubectl_manifest.coredns_hpa](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest) | resource |
+| [kubectl_manifest.coredns_pdb](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest) | resource |
 | [kubectl_manifest.services](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest) | resource |
 | [minikube_cluster.maklab_cluster](https://registry.terraform.io/providers/scott-the-programmer/minikube/latest/docs/resources/cluster) | resource |
 
