@@ -2,31 +2,37 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: services
-  namespace: argocd
-spec:
-  project: default
+  namespace: ${argoNamespace}
   labels:
     app.kubernetes.io/managed-by: Helm
+spec:
+  project: ${argoProject}
   source:
-    repoURL: ${gitops_repo}
-    path: ${gitops_services_path}
-    targetRevision: ${gitops_branch}
+    repoURL: ${repo}
+    path: ${path}
+    targetRevision: ${targetRevision}
     helm:
       valueFiles:
         - values.yaml
       parameters:
-        - name: repoUrl
-          value: ${gitops_repo}
-        - name: path
-          value: ${gitops_services_path}
-        - name: targetRevision
-          value: ${gitops_branch}
+        - name: argoNamespace
+          value: ${argoNamespace}
+        - name: argoProject
+          value: ${argoProject}
+        - name: clusterDomain
+          value: ${clusterDomain}
         - name: clusterName
-          value: "${cluster_name}"
-        - name: clusterEndpoint
-          value: "${cluster_endpoint}"
+          value: ${clusterName}
+        - name: clusterServer
+          value: ${clusterServer}
+        - name: repoUrl
+          value: ${repo}
+        - name: storageClass
+          value: ${storageClass}
+        - name: targetRevision
+          value: ${targetRevision}
   destination:
-    server: "https://kubernetes.default.svc"
+    server: ${clusterServer}
   syncPolicy:
     automated:
       prune: true

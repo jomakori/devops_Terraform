@@ -33,7 +33,7 @@ terraform {
 
 # Providers
 provider "doppler" {
-  doppler_token = var.doppler_token
+  doppler_token = var.DOPPLER_TOKEN
 }
 provider "helm" {
   kubernetes = {
@@ -43,6 +43,9 @@ provider "helm" {
 provider "kubectl" {
   load_config_file = true
 }
+provider "kubernetes" {
+  config_path = "~/.kube/config"
+}
 provider "minikube" {
-  kubernetes_version = var.kubernetes_version
+  kubernetes_version = var.cluster_config["kubernetes_version"]
 }

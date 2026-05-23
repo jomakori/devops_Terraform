@@ -1,6 +1,6 @@
 locals {
   cluster_name   = minikube_cluster.maklab_cluster.cluster_name
-  tailscale_fqdn = "${var.name}.${var.TAILSCALE_HOST}"
+  tailscale_fqdn = "${var.cluster_config["name"]}.${var.TAILSCALE_HOST}"
 }
 
 output "kubeconfig" {

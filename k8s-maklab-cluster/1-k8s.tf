@@ -1,20 +1,19 @@
 resource "minikube_cluster" "maklab_cluster" {
   # Cluster Configuration
-  cluster_name      = "${var.name}-cluster"
+  cluster_name      = "${var.cluster_config["name"]}-cluster"
   cni               = var.cluster_config["cni"]
   container_runtime = var.cluster_config["container_runtime"]
   driver            = var.cluster_config["driver"]
   vm                = true
 
-  # Access Configuration
-  # TAILSCALE_HOST is the full FQDN for remote access
-  apiserver_names = ["${var.name}.${var.TAILSCALE_HOST}"]
+  # Access Configuration - tailscale
+  apiserver_names = ["${var.cluster_config["name"]}.${var.TAILSCALE_HOST}"]
 
   # Node Configuration
-  cpus      = var.vm_config["cpus"]
-  memory    = var.vm_config["memory"]
-  disk_size = var.vm_config["disk_size"]
-  nodes     = tonumber(var.vm_config["worker_nodes"])
+  cpus      = var.cluster_config["cpus"]
+  memory    = var.cluster_config["memory"]
+  disk_size = var.cluster_config["disk_size"]
+  nodes     = tonumber(var.cluster_config["worker_nodes"])
 
   addons = [
     "storage-provisioner-rancher"
