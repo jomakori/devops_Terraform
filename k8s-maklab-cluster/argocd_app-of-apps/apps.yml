@@ -14,18 +14,13 @@ spec:
       valueFiles:
         - values.yaml
       parameters:
-        # GitOps Path
         - name: repoUrl
           value: ${gitops_repo}
         - name: path
           value: ${gitops_apps_path}
         - name: targetRevision
           value: ${gitops_branch}
-        # Doppler Tokens for apps/envs
-        - name: notesApp.environment.staging.dopplerToken
-          value: "${doppler_notes_app_staging}"
-        - name: notesApp.environment.production.dopplerToken
-          value: "${doppler_notes_app_prod}"
+
   destination:
     server: "https://kubernetes.default.svc"
   syncPolicy:

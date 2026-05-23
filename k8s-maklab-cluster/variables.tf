@@ -51,7 +51,7 @@ variable "vm_config" {
 
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ GitOps variables - Local                                                 │
+  │ GitOps Variables                                                         │
   └──────────────────────────────────────────────────────────────────────────┘
  */
 variable "gitops_repo" {
@@ -73,50 +73,18 @@ variable "gitops_services_path" {
   description = "Path to ArgoCD App manifests for Services"
   default     = "services/argocd-appset"
 }
+
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ GitOps Variables - Doppler                                               │
-  |                                                                          |
-  | > Note: Use `TF_VAR_` prefix in Doppler to pass in these variables       |
+  │ Cluster Infrastructure Variables                                         │
   └──────────────────────────────────────────────────────────────────────────┘
  */
-
-## Template Vars
 variable "TAILSCALE_HOST" {
   description = "URL to Tailscale Tunnel"
 }
 
-## App Vars
-variable "DOPPLER_PROD_TOKEN" {
-  description = "Doppler var - App Access token to Doppler for PROD "
-}
-variable "DOPPLER_STAGING_TOKEN" {
-  description = "Doppler var - App Access token to Doppler for staging "
-}
-
-## Service Vars
-variable "PG_USER" {
-  description = "Doppler var - Postgres user for app access"
-}
-variable "PG_PW" {
-  description = "Doppler var - Postgres password for app access"
-  sensitive   = true
-}
-variable "GRAFANA_ADMIN" {
-  description = "Doppler var - Grafana admin username"
-}
-variable "GRAFANA_PW" {
-  description = "Doppler var - Grafana admin password"
-  sensitive   = true
-}
-
-variable "MONGODB_HOST" {
-  description = "MongoDB host for service access"
-}
-variable "MONGODB_USER" {
-  description = "MongoDB user for service access"
-}
-variable "MONGODB_PW" {
-  description = "MongoDB password for service access"
+variable "doppler_token" {
+  description = "Doppler personal token with admin access. Used by TF provider to create service account + machine token for ESO."
+  type        = string
   sensitive   = true
 }

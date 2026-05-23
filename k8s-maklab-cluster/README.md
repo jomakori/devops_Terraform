@@ -45,8 +45,12 @@ Values file: [`helm/argocd-values.yaml`](helm/argocd-values.yaml)
 
 Uses the **App-of-Apps** pattern to let ArgoCD manage everything beyond itself. Two Application manifests split the cluster into distinct ownership:
 
-- **Services** — 3rd-party services (Grafana, Postgres operator, MongoDB, etc.) consumed as managed dependencies. Credentials (Grafana admin, Postgres user/pw, MongoDB host/user/pw) are injected as Helm template parameters from Terraform variables. Synced from `services/argocd-appset/` in the [gke_GitOps](https://github.com/jomakori/gke_GitOps) repo.
-- **Apps** — my own application workloads deployed on top of those services. Environment-scoped secrets (Doppler tokens for staging + production) are passed through for each app. Synced from `apps/argocd-appset/`.
+- **Services** — 3rd-party services (Grafana, Postgres operator, MongoDB, etc.) consumed as managed dependencies. Synced from `services/argocd-appset/` in the [gke_GitOps](https://github.com/jomakori/gke_GitOps) repo.
+- **Apps** — my own application workloads deployed on top of those services. Synced from `apps/argocd-appset/`.
+
+### 4. ESO + Doppler Bootstrap — [`4-eso.tf`](4-eso.tf)
+
+Creates Doppler service tokens for each project+config pair and stores them as K8s Secrets in the `external-secrets` namespace. These are consumed by `ClusterSecretStore` resources in the GitOps repo, enabling External Secrets Operator (ESO) to fetch secrets directly from Doppler — bypassing Terraform entirely for app and service secrets.
 
 ## GitOps Flow
 
@@ -74,16 +78,17 @@ Changes to the GitOps repo are automatically synced by ArgoCD (prune + self-heal
 
 ## Secrets Management
 
-Secrets are injected via **Doppler** at `terraform apply` time using `TF_VAR_` environment variables. Never committed to the repo.
+Secrets are managed via **ESO (External Secrets Operator) + Doppler**, with a single exception for cluster infrastructure.
 
 | Variable | Source | Used By |
 |----------|--------|---------|
-| `DOPPLER_PROD_TOKEN` | Doppler | App workloads (prod env) |
-| `DOPPLER_STAGING_TOKEN` | Doppler | App workloads (staging env) |
-| `GRAFANA_ADMIN` / `GRAFANA_PW` | Doppler | Grafana admin credentials |
-| `PG_USER` / `PG_PW` | Doppler | Postgres app credentials |
-| `MONGODB_HOST` / `MONGODB_USER` / `MONGODB_PW` | Doppler | MongoDB access |
-| `TAILSCALE_HOST` | Tailscale | Cluster API server FQDN |
+| `TAILSCALE_HOST` | Tailscale (set as `TF_VAR_`) | Cluster API server FQDN |
+
+- **`TAILSCALE_HOST`** is the only remaining `TF_VAR_` secret. It is cluster infrastructure (not an app/service secret), so it stays as a Terraform variable used by `1-k8s.tf` and `outputs.tf`.
+- **All app and service secrets** (Grafana, Postgres, MongoDB, Doppler tokens, etc.) have been removed from Terraform variables. They now flow through ESO + Doppler directly.
+- Terraform (via `4-eso.tf`) stores a single Doppler machine token as a K8s Secret in the `external-secrets/` namespace → `ClusterSecretStore` resources in the GitOps repo (one per config) all reference this same token, each specifying their own `project` + `config` → ESO fetches the real secret values from Doppler → pods consume them via standard `ExternalSecret` resources.
+
+This means `terraform apply` no longer needs to know about any application credentials — those are managed entirely within the Doppler dashboard and synced by ESO.
 
 ## Remote Access
 
@@ -104,7 +109,7 @@ kubectl get nodes
 - [Minikube](https://minikube.sigs.k8s.io/docs/start/) with [krunkit driver](https://minikube.sigs.k8s.io/docs/drivers/krunkit/)
 - [Tailscale](https://tailscale.com/) for remote node access
 - A [Terraform Cloud](https://app.terraform.io/) account (workspace: `k8s-maklab-cluster` in org `tf_jmakori`)
-- [Doppler CLI](https://docs.doppler.com/docs/cli) (for injecting secrets)
+- [Doppler CLI](https://docs.doppler.com/docs/cli) (for ESO service token management)
 
 ## Usage
 
@@ -112,13 +117,15 @@ kubectl get nodes
 # Authenticate with Terraform Cloud
 terraform login
 
-# Set Doppler variables
-doppler setup
+# Set the cluster infrastructure variable
+export TF_VAR_TAILSCALE_HOST="your-tailscale-fqdn"
 
 # Plan & apply
 terraform plan
 terraform apply
 ```
+
+> **Note:** App and service secrets are no longer passed via `TF_VAR_` variables. They are fetched at runtime by ESO from Doppler. The `doppler_service_tokens` variable in `4-eso.tf` can be used to define which Doppler projects/configs should have service tokens created for ESO to reference.
 
 After apply, ArgoCD will be available at `localhost:8080`:
 ```bash
@@ -137,6 +144,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 ├── 1-k8s.tf                      # Minikube cluster + CoreDNS hardening
 ├── 2-managed_services.tf         # ArgoCD Helm release
 ├── 3-gitops.tf                   # App-of-Apps manifests
+├── 4-eso.tf                     # ESO + Doppler bootstrap (service tokens → K8s Secrets)
 ├── variables.tf                  # All input variables
 ├── outputs.tf                    # Kubeconfig output with Tailscale endpoint
 ├── versions.tf                   # Provider versions + Terraform Cloud config

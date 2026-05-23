@@ -9,14 +9,7 @@ resource "kubectl_manifest" "services" {
       # cluster values
       cluster_name     = var.name
       cluster_endpoint = "localhost"
-      # service values to pass into helm charts
-      grafana_admin = var.GRAFANA_ADMIN
-      grafana_pw    = var.GRAFANA_PW
-      pg_user       = var.PG_USER
-      pg_pw         = var.PG_PW
-      mongodb_host  = var.MONGODB_HOST
-      mongodb_user  = var.MONGODB_USER
-      mongodb_pw    = var.MONGODB_PW
+
   })
 
   force_new  = true # re-create on changes
