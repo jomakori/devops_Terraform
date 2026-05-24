@@ -170,15 +170,15 @@ resource "null_resource" "local_dns" {
       cat > "$CONF_FILE" <<CONF
     address=/maklab.net/$CLUSTER_IP
     listen-address=127.0.0.1
-    port=5353
+    port=5300
     bind-interfaces
     no-resolv
     no-poll
     CONF
 
       # Create macOS resolver (needs sudo)
-      osascript -e 'do shell script "mkdir -p /etc/resolver && echo -e \"nameserver 127.0.0.1\\\nport 5353\" > /etc/resolver/maklab.net" with administrator privileges' 2>/dev/null || \
-      sudo mkdir -p /etc/resolver && echo -e 'nameserver 127.0.0.1\nport 5353' | sudo tee "$RESOLVER_FILE" >/dev/null
+      osascript -e 'do shell script "mkdir -p /etc/resolver && echo -e \"nameserver 127.0.0.1\\\nport 5300\" > /etc/resolver/maklab.net" with administrator privileges' 2>/dev/null || \
+      sudo mkdir -p /etc/resolver && echo -e 'nameserver 127.0.0.1\nport 5300' | sudo tee "$RESOLVER_FILE" >/dev/null
 
       # Restart dnsmasq to pick up config
       brew services restart dnsmasq
