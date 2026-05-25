@@ -8,6 +8,10 @@ terraform {
     }
   }
   required_providers {
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = ">= 4.0.0"
+    }
     doppler = {
       source  = "DopplerHQ/doppler"
       version = ">= 1.21.0"
@@ -28,10 +32,17 @@ terraform {
       source  = "scott-the-programmer/minikube"
       version = ">= 0.6.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.6.0"
+    }
   }
 }
 
 # Providers
+provider "cloudflare" {
+  api_token = var.CLOUDFLARE_API_TOKEN
+}
 provider "doppler" {
   doppler_token = var.DOPPLER_TOKEN
 }

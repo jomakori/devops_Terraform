@@ -36,6 +36,26 @@ variable "DOPPLER_TOKEN" {
   sensitive   = true
 }
 
+variable "CLOUDFLARE_API_TOKEN" {
+  description = "Cloudflare API token with DNS and Zero Trust permissions."
+  type        = string
+  sensitive   = true
+}
+
+variable "CLOUDFLARE_ACCOUNT_ID" {
+  description = "Cloudflare account ID for Zero Trust tunnel creation."
+  type        = string
+}
+
+variable "tunnel_config" {
+  description = "Cloudflare tunnel configuration"
+  type        = map(string)
+  default = {
+    tunnel_name     = "maklab-cluster"
+    doppler_project = "devops"
+    doppler_config  = "svc_cloudflare"
+  }
+}
 
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
