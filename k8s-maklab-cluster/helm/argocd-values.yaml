@@ -1,41 +1,132 @@
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Configure ArgoCD Controller                                              │
+# │ Production ArgoCD — HA, anti-affinity, PDB, resource limits              │
+# └──────────────────────────────────────────────────────────────────────────┘
+
+global:
+  # Hard anti-affinity per component label — ensures multi-replica components
+  # (server, repoServer) are spread across different nodes. Chart generates
+  # requiredDuringSchedulingIgnoredDuringExecution auto-magically.
+  affinity:
+    podAntiAffinity: hard
+
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ Application Controller — PDB + resources                                 │
 # └──────────────────────────────────────────────────────────────────────────┘
 controller:
+  replicas: 1  # StatefulSet — ArgoCD doesn't support >1 active controller
   resources:
     requests:
       cpu: "500m"
       memory: "512Mi"
+    limits:
+      memory: "1Gi"
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Configure ArgoCD ConfigMap                                               │
+# │ ConfigMap                                                                │
 # └──────────────────────────────────────────────────────────────────────────┘
 configs:
   params:
-    server.insecure: true # for local forward
+    server.insecure: true
   cm:
     create: true
-    exec.enabled: true # Enable terminal: https://argo-cd.readthedocs.io/en/stable/operator-manual/web_based_terminal/
+    exec.enabled: true
+    # Bump helm template timeout — 90s default is too short with all CRDs
+    helm.timeout: 300
+
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Configure ArgoCD Server Settings                                         │
+# │ API Server — HPA, PDB, resources                                         │
 # └──────────────────────────────────────────────────────────────────────────┘
 server:
+  replicas: 2
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      memory: "512Mi"
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
   autoscaling:
     enabled: true
-    minReplicas: 1
+    minReplicas: 2
+    maxReplicas: 4
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 70
   ingressGrpc:
-    enabled: false # not needed
+    enabled: false
   ingress:
     enabled: false
   service:
     labels:
       app: argocd-server
     type: NodePort
+
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ Repo Server — 2 replicas, PDB, resources, extended helm timeout          │
+# └──────────────────────────────────────────────────────────────────────────┘
 repoServer:
+  replicas: 2
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      memory: "2Gi"
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
   autoscaling:
     enabled: true
-    minReplicas: 1
+    minReplicas: 2
+    maxReplicas: 4
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 70
+
+
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ ApplicationSet Controller — resources                                    │
+# └──────────────────────────────────────────────────────────────────────────┘
+applicationSetController:
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      memory: "512Mi"
+
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ Redis — resources                                                        │
+# └──────────────────────────────────────────────────────────────────────────┘
+redis:
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      memory: "512Mi"
+
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ Dex Server — resources                                                   │
+# └──────────────────────────────────────────────────────────────────────────┘
+dexServer:
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      memory: "256Mi"
+
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ Notifications Controller — resources                                     │
+# └──────────────────────────────────────────────────────────────────────────┘
+notificationsController:
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      memory: "256Mi"
