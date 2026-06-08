@@ -3,10 +3,7 @@
 # └──────────────────────────────────────────────────────────────────────────┘
 
 global:
-  # Hard anti-affinity per component label — ensures multi-replica components
-  # (server, repoServer) are spread across different nodes. Chart generates
-  # requiredDuringSchedulingIgnoredDuringExecution auto-magically.
-  affinity:
+  # Hard anti-affinity per component label — ensures multi-replica components spread thru nodes
     podAntiAffinity: hard
 
 # ┌──────────────────────────────────────────────────────────────────────────┐

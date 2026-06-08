@@ -1,5 +1,9 @@
 locals {
-  gitops = merge(var.gitops_config, { clusterName = var.cluster_config["name"] })
+  gitops = merge(var.gitops_config, {
+    clusterName       = var.cluster_config["name"]
+    accessTeamDomain  = var.ACCESS_TEAM_DOMAIN
+    accessAudienceTag = var.ACCESS_AUDIENCE_TAG
+  })
 }
 
 resource "kubectl_manifest" "services" {
