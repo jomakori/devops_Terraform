@@ -21,3 +21,24 @@ resource "kubectl_manifest" "services" {
 #   force_new  = true
 #   depends_on = [kubectl_manifest.services]
 # }
+
+# ── Trusted proxy IPs for OpenClaw Gateway ──
+# OpenClaw uses trusted-proxy auth (CF Access → Istio Gateway → OpenClaw).
+# The gateway only trusts connections from these IPs.
+data "kubernetes_nodes" "all" {}
+
+locals {
+  trusted_proxy_ips = jsonencode(flatten([
+    for node in data.kubernetes_nodes.all.nodes : [
+      for addr in node.status[0].addresses : addr.address
+      if addr.type == "InternalIP"
+    ]
+  ]))
+}
+
+resource "doppler_secret" "trusted_proxy_ips" {
+  project = "devops"
+  config  = "svc_openclaw"
+  name    = "TRUSTED_PROXY_IPS"
+  value   = local.trusted_proxy_ips
+}
