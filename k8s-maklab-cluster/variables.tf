@@ -3,8 +3,6 @@
   │ Cluster variables                                                        │
   └──────────────────────────────────────────────────────────────────────────┘
  */
-
-
 variable "cluster_config" {
   description = "Cluster-wide configuration for the minikube cluster"
   type        = map(string)
@@ -12,7 +10,7 @@ variable "cluster_config" {
     cni                = "flannel"
     container_runtime  = "containerd"
     cpus               = "max"
-    disk_size          = "10000mb"
+    disk_size          = "20000mb"
     driver             = "krunkit"
     kubernetes_version = "v1.35.1"
     memory             = "15g"

@@ -35,10 +35,3 @@ locals {
     ]
   ]))
 }
-
-resource "doppler_secret" "trusted_proxy_ips" {
-  project = "devops"
-  config  = "svc_openclaw"
-  name    = "TRUSTED_PROXY_IPS"
-  value   = local.trusted_proxy_ips
-}

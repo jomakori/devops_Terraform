@@ -3,21 +3,20 @@
 # └──────────────────────────────────────────────────────────────────────────┘
 
 global:
-  # Hard anti-affinity per component label — ensures multi-replica components spread thru nodes
     podAntiAffinity: hard
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Application Controller — PDB + resources                                 │
+# │ Application Controller                                                   │
 # └──────────────────────────────────────────────────────────────────────────┘
 controller:
-  replicas: 1  # StatefulSet — ArgoCD doesn't support >1 active controller
+  replicas: 2
   resources:
     requests:
       cpu: "500m"
       memory: "512Mi"
     limits:
       memory: "1Gi"
-  podDisruptionBudget:
+  pdb:
     enabled: true
     minAvailable: 1
 
@@ -30,11 +29,10 @@ configs:
   cm:
     create: true
     exec.enabled: true
-    # Bump helm template timeout — 90s default is too short with all CRDs
     helm.timeout: 300
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ API Server — HPA, PDB, resources                                         │
+# │ API Server                                                               │
 # └──────────────────────────────────────────────────────────────────────────┘
 server:
   replicas: 2
@@ -44,7 +42,7 @@ server:
       memory: "256Mi"
     limits:
       memory: "512Mi"
-  podDisruptionBudget:
+  pdb:
     enabled: true
     minAvailable: 1
   autoscaling:
@@ -63,7 +61,7 @@ server:
     type: NodePort
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Repo Server — 2 replicas, PDB, resources, extended helm timeout          │
+# │ Repo Server                                                              │
 # └──────────────────────────────────────────────────────────────────────────┘
 repoServer:
   replicas: 2
@@ -73,7 +71,7 @@ repoServer:
       memory: "512Mi"
     limits:
       memory: "2Gi"
-  podDisruptionBudget:
+  pdb:
     enabled: true
     minAvailable: 1
   autoscaling:
@@ -83,11 +81,14 @@ repoServer:
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 70
 
-
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ ApplicationSet Controller — resources                                    │
+# │ ApplicationSet Controller                                                │
 # └──────────────────────────────────────────────────────────────────────────┘
-applicationSetController:
+applicationSet:
+  replicas: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
   resources:
     requests:
       cpu: "250m"
@@ -96,7 +97,7 @@ applicationSetController:
       memory: "512Mi"
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Redis — resources                                                        │
+# │ Redis                                                                    │
 # └──────────────────────────────────────────────────────────────────────────┘
 redis:
   resources:
@@ -105,11 +106,17 @@ redis:
       memory: "256Mi"
     limits:
       memory: "512Mi"
+  pdb:
+    enabled: true
+    minAvailable: 1
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Dex Server — resources                                                   │
+# │ Dex Server                                                               │
 # └──────────────────────────────────────────────────────────────────────────┘
-dexServer:
+dex:
+  pdb:
+    enabled: true
+    minAvailable: 1
   resources:
     requests:
       cpu: "100m"
@@ -118,9 +125,12 @@ dexServer:
       memory: "256Mi"
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Notifications Controller — resources                                     │
+# │ Notifications Controller                                                 │
 # └──────────────────────────────────────────────────────────────────────────┘
-notificationsController:
+notifications:
+  pdb:
+    enabled: true
+    minAvailable: 1
   resources:
     requests:
       cpu: "100m"
