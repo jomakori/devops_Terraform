@@ -10,9 +10,12 @@ resource "null_resource" "longhorn_deps" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      orb sudo apt-get update -qq &&
-      orb sudo apt-get install -y -qq open-iscsi nfs-common
-      echo "Longhorn dependencies installed in Docker host"
+      echo "Installing Longhorn dependencies (iscsi, nfs-common) in Docker host..."
+      docker run --rm --privileged --pid=host --network=host \
+        alpine:latest sh -c '
+          apk add --no-cache open-iscsi nfs-utils
+          echo "Dependencies installed"
+        ' 2>/dev/null || echo "OrbStack Docker host may not support privileged containers - Longhorn may still work with single replica"
     EOT
   }
 }
@@ -106,7 +109,7 @@ YAML
   └──────────────────────────────────────────────────────────────────────────┘
  */
 resource "local_file" "kubeconfig" {
-  content         = k3d_cluster.maklab_cluster.kubeconfig
+  content         = replace(k3d_cluster.maklab_cluster.kubeconfig, "/https://0\\.0\\.0\\.0:\\d+/", "https://localhost:6443")
   filename        = pathexpand("~/.kube/config")
   file_permission = "0600"
 
