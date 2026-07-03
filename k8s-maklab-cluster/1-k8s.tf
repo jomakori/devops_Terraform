@@ -104,17 +104,3 @@ YAML
 
   depends_on = [k3d_cluster.maklab_cluster]
 }
-
-/*
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │ Kubeconfig — auto-written to ~/.kube/config after every apply            │
-  │ OrbStack handles port forwarding reliably — no endpoint rewrite needed   │
-  └──────────────────────────────────────────────────────────────────────────┘
- */
-resource "local_file" "kubeconfig" {
-  content         = replace(k3d_cluster.maklab_cluster.kubeconfig, "/https://0\\.0\\.0\\.0:\\d+/", "https://jmak-lab.tail2354a3.ts.net:443")
-  filename        = pathexpand("~/.kube/config")
-  file_permission = "0600"
-
-  depends_on = [k3d_cluster.maklab_cluster]
-}
