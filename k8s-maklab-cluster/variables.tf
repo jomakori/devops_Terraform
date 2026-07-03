@@ -22,7 +22,7 @@ variable "cluster_config" {
   └──────────────────────────────────────────────────────────────────────────┘
  */
 variable "TAILSCALE_HOST" {
-  description = "URL to Tailscale Tunnel (optional for k3d, was required for minikube)"
+  description = "URL to Tailscale Tunnel"
   default     = ""
 }
 
@@ -106,5 +106,3 @@ variable "gitops_config" {
     targetRevision     = "HEAD"
   }
 }
-
-

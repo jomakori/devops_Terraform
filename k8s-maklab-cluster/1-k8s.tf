@@ -112,7 +112,7 @@ YAML
   └──────────────────────────────────────────────────────────────────────────┘
  */
 resource "local_file" "kubeconfig" {
-  content         = replace(k3d_cluster.maklab_cluster.kubeconfig, "/https://0\\.0\\.0\\.0:\\d+/", "https://localhost:6443")
+  content         = replace(k3d_cluster.maklab_cluster.kubeconfig, "/https://0\\.0\\.0\\.0:\\d+/", "https://jmak-lab.tail2354a3.ts.net:443")
   filename        = pathexpand("~/.kube/config")
   file_permission = "0600"
 
