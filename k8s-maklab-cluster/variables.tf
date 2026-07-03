@@ -11,7 +11,7 @@ variable "cluster_config" {
     container_runtime  = "containerd"
     driver             = "k3d"
     kubernetes_version = "v1.35.1-k3s1"
-    name               = "jmak-lab"
+    name               = "maklab-cluster"
     worker_nodes       = "3"
   }
 }
