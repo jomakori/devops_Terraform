@@ -1,29 +1,27 @@
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ Prerequisite: Install iscsi + nfs-common in colima VM for Longhorn       │
+  │ Prerequisite: Install iscsi + nfs-common in Docker host for Longhorn     │
   └──────────────────────────────────────────────────────────────────────────┘
  */
-resource "null_resource" "colima_longhorn_deps" {
+resource "null_resource" "longhorn_deps" {
   triggers = {
     cluster_name = var.cluster_config["name"]
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      colima ssh -- sudo apt-get update -qq &&
-      colima ssh -- sudo apt-get install -y -qq open-iscsi nfs-common
-      echo "Longhorn dependencies installed in colima VM"
+      orb sudo apt-get update -qq &&
+      orb sudo apt-get install -y -qq open-iscsi nfs-common
+      echo "Longhorn dependencies installed in Docker host"
     EOT
   }
 }
 
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ k3d Cluster — 1 server + 3 agents on colima (arm64)                      │
-  │                                                                            │
-  │ Provider: 3rein/k3d v0.0.4 — native schema, configurable kube_api host   │
-  │ API:     https://192.168.65.2:6443 (stable, no SSH tunnel dependency)    │
-  │ Image:   rancher/k3s (bundled iptables-nft shim for nftables compat)     │
+  │ k3d Cluster — 1 server + 3 agents on OrbStack (arm64)                    │
+  │ Provider: SneakyBugs/k3d v1.0.1                                          │
+  │ Image: rancher/k3s (bundled iptables-nft shim for nftables compat)       │
   └──────────────────────────────────────────────────────────────────────────┘
  */
 resource "k3d_cluster" "maklab_cluster" {
@@ -48,9 +46,6 @@ options:
         nodeFilters:
           - server:*
           - agent:*
-      - arg: --tls-san=192.168.65.2
-        nodeFilters:
-          - server:*
       - arg: --node-label=intent=apps
         nodeFilters:
           - agent:*
@@ -59,13 +54,13 @@ options:
     switchCurrentContext: true
 EOT
 
-  depends_on = [null_resource.colima_longhorn_deps]
+  depends_on = [null_resource.longhorn_deps]
 }
 
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ CoreDNS — forward external DNS to 8.8.8.8                                │
-  │ k3d default forwards to node resolv.conf which uses colima NAT DNS       │
+  │ k3d default forwards to node resolv.conf which uses Docker DNS           │
   │ that doesn't reliably forward UDP from pod network                       │
   └──────────────────────────────────────────────────────────────────────────┘
  */
@@ -107,11 +102,11 @@ YAML
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ Kubeconfig — auto-written to ~/.kube/config after every apply            │
-  │ Replaces 0.0.0.0:<port> with 192.168.65.2:6443 for stable access       │
+  │ OrbStack handles port forwarding reliably — no endpoint rewrite needed   │
   └──────────────────────────────────────────────────────────────────────────┘
  */
 resource "local_file" "kubeconfig" {
-  content         = replace(k3d_cluster.maklab_cluster.kubeconfig, "/https://0\\.0\\.0\\.0:\\d+/", "https://192.168.65.2:6443")
+  content         = k3d_cluster.maklab_cluster.kubeconfig
   filename        = pathexpand("~/.kube/config")
   file_permission = "0600"
 

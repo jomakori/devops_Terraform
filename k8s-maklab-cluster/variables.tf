@@ -9,11 +9,8 @@ variable "cluster_config" {
   default = {
     cni                = "flannel"
     container_runtime  = "containerd"
-    cpus               = "max"
-    disk_size          = "20000mb"
     driver             = "k3d"
     kubernetes_version = "v1.35.1-k3s1"
-    memory             = "15g"
     name               = "jmak-lab"
     worker_nodes       = "3"
   }
