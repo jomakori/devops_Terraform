@@ -1,14 +1,15 @@
 locals {
   cluster_name = k3d_cluster.maklab_cluster.name
+  tunnel_host  = "jmak-lab.tail2354a3.ts.net"
 }
 
 output "kubeconfig" {
-  description = "Kubeconfig for accessing the k3d cluster"
+  description = "Kubeconfig for accessing the k3d cluster via Tailscale tunnel"
   sensitive   = true
-  value       = k3d_cluster.maklab_cluster.kubeconfig
+  value       = replace(k3d_cluster.maklab_cluster.kubeconfig, "/https://0\\.0\\.0\\.0:\\d+/", "https://${local.tunnel_host}:443")
 }
 
 output "public_tunnel" {
-  description = "Forwarded public tunnel to cluster"
-  value = "https://jmaklab.${var.TAILSCALE_HOST}:443"
+  description = "Tailscale tunnel endpoint for remote cluster access"
+  value       = "https://${local.tunnel_host}:443"
 }
