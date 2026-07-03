@@ -5,7 +5,6 @@
  */
 resource "null_resource" "colima_longhorn_deps" {
   triggers = {
-    # Re-run if cluster name changes (indicates new colima setup)
     cluster_name = var.cluster_config["name"]
   }
 
@@ -21,10 +20,8 @@ resource "null_resource" "colima_longhorn_deps" {
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ k3d Cluster — 1 server + 3 agents on colima (arm64)                      │
-  │                                                                            │
   │ Image: rancher/k3s (bundled iptables-nft shim for nftables compat)       │
-  │ Nodes: server=1 (control plane), agents=3 (workload)                      │
-  │ Labels: intent=apps on all agent nodes (nodeSelector for app workloads)   │
+  │ API server exposed on port 6443 via loadbalancer (no SSH tunnel needed)  │
   └──────────────────────────────────────────────────────────────────────────┘
  */
 resource "k3d_cluster" "maklab_cluster" {
@@ -38,15 +35,17 @@ metadata:
 servers: 1
 agents: 3
 image: rancher/k3s:${var.cluster_config["kubernetes_version"]}
+ports:
+  - port: 6443:6443
+    nodeFilters:
+      - loadbalancer
 options:
   k3s:
     extraArgs:
-      # Use bundled iptables-nft shim — stable on arm64, avoids host nftables conflicts
       - arg: --prefer-bundled-bin
         nodeFilters:
           - server:*
           - agent:*
-      # Label all agent nodes so app workloads target them via nodeSelector
       - arg: --node-label=intent=apps
         nodeFilters:
           - agent:*
@@ -58,4 +57,45 @@ EOT
   depends_on = [null_resource.colima_longhorn_deps]
 }
 
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ CoreDNS — forward external DNS to 8.8.8.8                                │
+  │ k3d default forwards to node resolv.conf which uses colima NAT DNS       │
+  │ that doesn't reliably forward UDP from pod network                       │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+resource "kubectl_manifest" "coredns_config" {
+  yaml_body = <<-YAML
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+          pods insecure
+          fallthrough in-addr.arpa ip6.arpa
+        }
+        hosts /etc/coredns/NodeHosts {
+          ttl 60
+          reload 15s
+          fallthrough
+        }
+        prometheus :9153
+        cache 30
+        loop
+        reload
+        loadbalance
+        import /etc/coredns/custom/*.override
+        forward . 8.8.8.8 8.8.4.4
+    }
+YAML
+
+  depends_on = [k3d_cluster.maklab_cluster]
+}
 
