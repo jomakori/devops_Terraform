@@ -28,9 +28,13 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = ">= 2.22.0"
     }
-    minikube = {
-      source  = "scott-the-programmer/minikube"
-      version = ">= 0.6.0"
+    k3d = {
+      source  = "SneakyBugs/k3d"
+      version = "1.0.1"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = ">= 3.2.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -46,17 +50,25 @@ provider "cloudflare" {
 provider "doppler" {
   doppler_token = var.DOPPLER_TOKEN
 }
+provider "k3d" {}
 provider "helm" {
   kubernetes = {
-    config_path = "~/.kube/config"
+    host                   = k3d_cluster.maklab_cluster.host
+    client_certificate     = base64decode(k3d_cluster.maklab_cluster.client_certificate)
+    client_key             = base64decode(k3d_cluster.maklab_cluster.client_key)
+    cluster_ca_certificate = base64decode(k3d_cluster.maklab_cluster.cluster_ca_certificate)
   }
 }
 provider "kubectl" {
-  load_config_file = true
+  host                   = k3d_cluster.maklab_cluster.host
+  client_certificate     = base64decode(k3d_cluster.maklab_cluster.client_certificate)
+  client_key             = base64decode(k3d_cluster.maklab_cluster.client_key)
+  cluster_ca_certificate = base64decode(k3d_cluster.maklab_cluster.cluster_ca_certificate)
+  load_config_file       = false
 }
 provider "kubernetes" {
-  config_path = "~/.kube/config"
-}
-provider "minikube" {
-  kubernetes_version = var.cluster_config["kubernetes_version"]
+  host                   = k3d_cluster.maklab_cluster.host
+  client_certificate     = base64decode(k3d_cluster.maklab_cluster.client_certificate)
+  client_key             = base64decode(k3d_cluster.maklab_cluster.client_key)
+  cluster_ca_certificate = base64decode(k3d_cluster.maklab_cluster.cluster_ca_certificate)
 }

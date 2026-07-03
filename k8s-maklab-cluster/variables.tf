@@ -4,18 +4,18 @@
   └──────────────────────────────────────────────────────────────────────────┘
  */
 variable "cluster_config" {
-  description = "Cluster-wide configuration for the minikube cluster"
+  description = "Cluster-wide configuration for the k3d cluster"
   type        = map(string)
   default = {
     cni                = "flannel"
     container_runtime  = "containerd"
     cpus               = "max"
     disk_size          = "20000mb"
-    driver             = "krunkit"
-    kubernetes_version = "v1.35.1"
+    driver             = "k3d"
+    kubernetes_version = "v1.35.1-k3s1"
     memory             = "15g"
     name               = "jmak-lab"
-    worker_nodes       = "4"
+    worker_nodes       = "3"
   }
 }
 
@@ -25,7 +25,8 @@ variable "cluster_config" {
   └──────────────────────────────────────────────────────────────────────────┘
  */
 variable "TAILSCALE_HOST" {
-  description = "URL to Tailscale Tunnel"
+  description = "URL to Tailscale Tunnel (optional for k3d, was required for minikube)"
+  default     = ""
 }
 
 variable "DOPPLER_TOKEN" {
@@ -104,7 +105,9 @@ variable "gitops_config" {
     clusterServer      = "https://kubernetes.default.svc"
     repo               = "https://github.com/jomakori/gke_GitOps.git"
     services_path      = "services/argocd-appset"
-    storageClass       = "local-path"
+    storageClass       = "longhorn"
     targetRevision     = "HEAD"
   }
 }
+
+

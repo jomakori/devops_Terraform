@@ -1,190 +1,61 @@
-resource "minikube_cluster" "maklab_cluster" {
-  # Cluster Configuration
-  cluster_name      = "${var.cluster_config["name"]}-cluster"
-  cni               = var.cluster_config["cni"]
-  container_runtime = var.cluster_config["container_runtime"]
-  driver            = var.cluster_config["driver"]
-  vm                = true
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ Prerequisite: Install iscsi + nfs-common in colima VM for Longhorn       │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+resource "null_resource" "colima_longhorn_deps" {
+  triggers = {
+    # Re-run if cluster name changes (indicates new colima setup)
+    cluster_name = var.cluster_config["name"]
+  }
 
-  # Access Configuration - tailscale
-  apiserver_names = ["${var.cluster_config["name"]}.${var.TAILSCALE_HOST}"]
-
-  # Node Configuration
-  cpus      = var.cluster_config["cpus"]
-  memory    = var.cluster_config["memory"]
-  disk_size = var.cluster_config["disk_size"]
-  nodes     = tonumber(var.cluster_config["worker_nodes"])
-
-  extra_config = ["kubelet.node-labels=intent=apps"]
-
-  addons = [
-    "storage-provisioner-rancher"
-  ]
+  provisioner "local-exec" {
+    command = <<-EOT
+      colima ssh -- sudo apt-get update -qq &&
+      colima ssh -- sudo apt-get install -y -qq open-iscsi nfs-common
+      echo "Longhorn dependencies installed in colima VM"
+    EOT
+  }
 }
 
-# Point local-path provisioner at macOS host filesystem (460G) instead of tmpfs (14G root).
-resource "kubectl_manifest" "local_path_config" {
-  yaml_body = <<YAML
-apiVersion: v1
-kind: ConfigMap
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ k3d Cluster — 1 server + 3 agents on colima (arm64)                      │
+  │                                                                            │
+  │ Image: rancher/k3s (bundled iptables-nft shim for nftables compat)       │
+  │ Nodes: server=1 (control plane), agents=3 (workload)                      │
+  │ Labels: intent=apps on all agent nodes (nodeSelector for app workloads)   │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+resource "k3d_cluster" "maklab_cluster" {
+  name = var.cluster_config["name"]
+
+  k3d_config = <<-EOT
+apiVersion: k3d.io/v1alpha5
+kind: Simple
 metadata:
-  name: local-path-config
-  namespace: local-path-storage
-data:
-  config.json: |-
-    {
-      "nodePathMap": [
-        {
-          "node": "DEFAULT_PATH_FOR_NON_LISTED_NODES",
-          "paths": ["/minikube-host/Shared/local-path-provisioner"]
-        }
-      ]
-    }
-  helperPod.yaml: |-
-    apiVersion: v1
-    kind: Pod
-    metadata:
-      name: helper-pod
-    spec:
-      containers:
-        - name: helper-pod
-          image: docker.io/busybox:stable@sha256:3fbc632167424a6d997e74f52b878d7cc478225cffac6bc977eedfe51c7f4e79
-          imagePullPolicy: IfNotPresent
-  setup: |-
-    #!/bin/sh
-    set -eu
-    mkdir -m 0777 -p "$VOL_DIR"
-  teardown: |-
-    #!/bin/sh
-    set -eu
-    rm -rf "$VOL_DIR"
-YAML
+  name: ${var.cluster_config["name"]}
+servers: 1
+agents: 3
+image: rancher/k3s:${var.cluster_config["kubernetes_version"]}
+options:
+  k3s:
+    extraArgs:
+      # Use bundled iptables-nft shim — stable on arm64, avoids host nftables conflicts
+      - arg: --prefer-bundled-bin
+        nodeFilters:
+          - server:*
+          - agent:*
+      # Label all agent nodes so app workloads target them via nodeSelector
+      - arg: --node-label=intent=apps
+        nodeFilters:
+          - agent:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+EOT
 
-  depends_on = [minikube_cluster.maklab_cluster]
+  depends_on = [null_resource.colima_longhorn_deps]
 }
 
-# CoreDNS settings
-
-## cache cluster.local, resource bounds, node-spread, HPA, and PDB for reliable DNS
-resource "kubectl_manifest" "coredns_config" {
-  yaml_body = <<YAML
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: coredns
-  namespace: kube-system
-data:
-  Corefile: |
-    .:53 {
-        log
-        errors
-        health {
-           lameduck 5s
-        }
-        ready
-        kubernetes cluster.local in-addr.arpa ip6.arpa {
-           pods insecure
-           fallthrough in-addr.arpa ip6.arpa
-           ttl 30
-        }
-        prometheus :9153
-        hosts {
-           192.168.64.1 host.minikube.internal
-           fallthrough
-        }
-        forward . /etc/resolv.conf { max_concurrent 1000 }
-        cache 30
-        loop
-        reload
-        loadbalance
-    }
-YAML
-
-  depends_on = [minikube_cluster.maklab_cluster]
-}
-
-## Auto-scale CoreDNS based on load
-resource "kubectl_manifest" "coredns_hpa" {
-  yaml_body = <<YAML
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: coredns
-  namespace: kube-system
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: coredns
-  minReplicas: 2
-  maxReplicas: 6
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 70
-    - type: Resource
-      resource:
-        name: memory
-        target:
-          type: Utilization
-          averageUtilization: 80
-YAML
-
-  depends_on = [kubectl_manifest.coredns_config]
-}
-
-## requests/limits, and pod anti-affinity for node-failure resilience
-resource "kubectl_manifest" "coredns_deployment" {
-  yaml_body = <<YAML
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: coredns
-  namespace: kube-system
-spec:
-  template:
-    spec:
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchLabels:
-                  k8s-app: kube-dns
-              topologyKey: kubernetes.io/hostname
-      containers:
-      - name: coredns
-        resources:
-          requests:
-            cpu: 100m
-            memory: 70Mi
-          limits:
-            cpu: 200m
-            memory: 150Mi
-YAML
-
-  depends_on = [kubectl_manifest.coredns_config]
-}
-
-# Ensure at least 1 CoreDNS pod stays available during node maintenance
-resource "kubectl_manifest" "coredns_pdb" {
-  yaml_body = <<YAML
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: coredns-pdb
-  namespace: kube-system
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      k8s-app: kube-dns
-YAML
-
-  depends_on = [kubectl_manifest.coredns_deployment]
-}
 
