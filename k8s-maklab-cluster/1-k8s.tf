@@ -52,6 +52,9 @@ options:
       - arg: --node-label=intent=apps
         nodeFilters:
           - agent:*
+      - arg: --tls-san=jmak-lab.tail2354a3.ts.net
+        nodeFilters:
+          - server:*
   kubeconfig:
     updateDefaultKubeconfig: true
     switchCurrentContext: true
