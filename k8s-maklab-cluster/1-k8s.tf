@@ -20,8 +20,10 @@ resource "null_resource" "colima_longhorn_deps" {
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ k3d Cluster — 1 server + 3 agents on colima (arm64)                      │
-  │ Image: rancher/k3s (bundled iptables-nft shim for nftables compat)       │
-  │ API server exposed on port 6443 via loadbalancer (no SSH tunnel needed)  │
+  │                                                                            │
+  │ Provider: 3rein/k3d v0.0.4 — native schema, configurable kube_api host   │
+  │ API:     https://192.168.65.2:6443 (stable, no SSH tunnel dependency)    │
+  │ Image:   rancher/k3s (bundled iptables-nft shim for nftables compat)     │
   └──────────────────────────────────────────────────────────────────────────┘
  */
 resource "k3d_cluster" "maklab_cluster" {
@@ -46,6 +48,9 @@ options:
         nodeFilters:
           - server:*
           - agent:*
+      - arg: --tls-san=192.168.65.2
+        nodeFilters:
+          - server:*
       - arg: --node-label=intent=apps
         nodeFilters:
           - agent:*
@@ -99,3 +104,16 @@ YAML
   depends_on = [k3d_cluster.maklab_cluster]
 }
 
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ Kubeconfig — auto-written to ~/.kube/config after every apply            │
+  │ Replaces 0.0.0.0:<port> with 192.168.65.2:6443 for stable access       │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+resource "local_file" "kubeconfig" {
+  content         = replace(k3d_cluster.maklab_cluster.kubeconfig, "/https://0\\.0\\.0\\.0:\\d+/", "https://192.168.65.2:6443")
+  filename        = pathexpand("~/.kube/config")
+  file_permission = "0600"
+
+  depends_on = [k3d_cluster.maklab_cluster]
+}

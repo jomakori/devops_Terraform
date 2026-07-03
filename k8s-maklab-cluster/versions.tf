@@ -36,6 +36,10 @@ terraform {
       source  = "hashicorp/null"
       version = ">= 3.2.0"
     }
+    local = {
+      source  = "hashicorp/local"
+      version = ">= 2.5.0"
+    }
     random = {
       source  = "hashicorp/random"
       version = ">= 3.6.0"
@@ -53,22 +57,12 @@ provider "doppler" {
 provider "k3d" {}
 provider "helm" {
   kubernetes = {
-    host                   = k3d_cluster.maklab_cluster.host
-    client_certificate     = base64decode(k3d_cluster.maklab_cluster.client_certificate)
-    client_key             = base64decode(k3d_cluster.maklab_cluster.client_key)
-    cluster_ca_certificate = base64decode(k3d_cluster.maklab_cluster.cluster_ca_certificate)
+    config_path = pathexpand("~/.kube/config")
   }
 }
 provider "kubectl" {
-  host                   = k3d_cluster.maklab_cluster.host
-  client_certificate     = base64decode(k3d_cluster.maklab_cluster.client_certificate)
-  client_key             = base64decode(k3d_cluster.maklab_cluster.client_key)
-  cluster_ca_certificate = base64decode(k3d_cluster.maklab_cluster.cluster_ca_certificate)
-  load_config_file       = false
+  load_config_file = true
 }
 provider "kubernetes" {
-  host                   = k3d_cluster.maklab_cluster.host
-  client_certificate     = base64decode(k3d_cluster.maklab_cluster.client_certificate)
-  client_key             = base64decode(k3d_cluster.maklab_cluster.client_key)
-  cluster_ca_certificate = base64decode(k3d_cluster.maklab_cluster.cluster_ca_certificate)
+  config_path = pathexpand("~/.kube/config")
 }
