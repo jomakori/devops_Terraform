@@ -56,7 +56,7 @@ provider "doppler" {
 }
 provider "k3d" {}
 provider "helm" {
-  kubernetes =
+  kubernetes = {
     config_path = pathexpand("~/.kube/config")
   }
 }
