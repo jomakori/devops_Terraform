@@ -1,30 +1,9 @@
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ Prerequisite: Install iscsi + nfs-common in Docker host for Longhorn     │
-  └──────────────────────────────────────────────────────────────────────────┘
- */
-resource "null_resource" "longhorn_deps" {
-  triggers = {
-    cluster_name = var.cluster_config["name"]
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      echo "Installing Longhorn dependencies (iscsi, nfs-common) in Docker host..."
-      docker run --rm --privileged --pid=host --network=host \
-        alpine:latest sh -c '
-          apk add --no-cache open-iscsi nfs-utils
-          echo "Dependencies installed"
-        ' 2>/dev/null || echo "OrbStack Docker host may not support privileged containers - Longhorn may still work with single replica"
-    EOT
-  }
-}
-
-/*
-  ┌──────────────────────────────────────────────────────────────────────────┐
   │ k3d Cluster — 1 server + 3 agents on OrbStack (arm64)                    │
   │ Provider: SneakyBugs/k3d v1.0.1                                          │
-  │ Image: rancher/k3s (bundled iptables-nft shim for nftables compat)       │
+  │ Image: custom k3s with iscsi pre-installed (built via make k3s-image)    │
+  │        Dockerfile at docker/Dockerfile — copies open-iscsi from Alpine   │
   └──────────────────────────────────────────────────────────────────────────┘
  */
 resource "k3d_cluster" "maklab_cluster" {
@@ -36,8 +15,8 @@ kind: Simple
 metadata:
   name: ${var.cluster_config["name"]}
 servers: 1
-agents: 3
-image: rancher/k3s:${var.cluster_config["kubernetes_version"]}
+agents: ${var.cluster_config["worker_nodes"]}
+image: ${var.k3s_image}
 ports:
   - port: 6443:6443
     nodeFilters:
@@ -52,24 +31,27 @@ options:
       - arg: --node-label=intent=apps
         nodeFilters:
           - agent:*
-      - arg: --tls-san=jmak-lab.tail2354a3.ts.net
+      - arg: --tls-san=${local.tunnel_host}
         nodeFilters:
           - server:*
   kubeconfig:
     updateDefaultKubeconfig: true
     switchCurrentContext: true
 EOT
-
-  depends_on = [null_resource.longhorn_deps]
 }
 
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ CoreDNS — forward external DNS to 8.8.8.8                                │
-  │ k3d default forwards to node resolv.conf which uses Docker DNS           │
-  │ that doesn't reliably forward UDP from pod network                       │
+  │ CoreDNS upstream — use k3d node's own DNS (Docker bridge)                │
+  │ Google DNS (8.8.8.8) unreliable from k3d pod network via UDP             │
   └──────────────────────────────────────────────────────────────────────────┘
  */
+data "external" "k3d_dns" {
+  program = ["sh", "-c", "echo \"{\\\"ip\\\":\\\"$(docker exec k3d-${var.cluster_config["name"]}-server-0 cat /etc/resolv.conf | grep nameserver | head -1 | awk '{print $2}')\\\"}\""]
+
+  depends_on = [k3d_cluster.maklab_cluster]
+}
+
 resource "kubectl_manifest" "coredns_config" {
   yaml_body = <<-YAML
 apiVersion: v1
@@ -98,9 +80,9 @@ data:
         reload
         loadbalance
         import /etc/coredns/custom/*.override
-        forward . 8.8.8.8 8.8.4.4
+        forward . ${data.external.k3d_dns.result.ip}
     }
 YAML
 
-  depends_on = [k3d_cluster.maklab_cluster]
+  depends_on = [k3d_cluster.maklab_cluster, data.external.k3d_dns]
 }

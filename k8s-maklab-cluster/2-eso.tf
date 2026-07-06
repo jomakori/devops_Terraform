@@ -1,23 +1,11 @@
-# Centralized ESO ClusterSecretStore
-
-resource "kubectl_manifest" "eso_namespace" {
-  yaml_body = <<YAML
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: external-secrets
-YAML
-
-  depends_on = [k3d_cluster.maklab_cluster]
-}
-
+# Doppler Access Token Secret
 resource "kubectl_manifest" "doppler_machine_token_secret" {
   yaml_body  = <<YAML
 apiVersion: v1
 kind: Secret
 metadata:
   name: doppler-machine-token
-  namespace: external-secrets
+  namespace: default
   labels:
     app.kubernetes.io/managed-by: terraform
 type: Opaque
@@ -25,5 +13,5 @@ stringData:
   dopplerToken: ${var.DOPPLER_TOKEN}
 YAML
   force_new  = true
-  depends_on = [kubectl_manifest.eso_namespace]
+  depends_on = [k3d_cluster.maklab_cluster]
 }

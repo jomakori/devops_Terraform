@@ -23,7 +23,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "maklab" {
       service  = "https://istio-ingressgateway.istio-system.svc:443"
       origin_request = {
         no_tls_verify     = true
-        match_sn_ito_host = true
+        match_sni_to_host = true
       }
     },
     {

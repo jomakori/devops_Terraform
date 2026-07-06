@@ -16,6 +16,12 @@ variable "cluster_config" {
   }
 }
 
+variable "k3s_image" {
+  description = "Custom k3s Docker image with iscsi pre-installed for Longhorn compatibility. Defaults to GHCR image built via make k3s-image."
+  type        = string
+  default     = "ghcr.io/jomakori/k3s-iscsi:v1.35.1-k3s1"
+}
+
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ Doppler-passed variables                                                 │
