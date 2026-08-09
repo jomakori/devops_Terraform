@@ -30,6 +30,30 @@ configs:
     create: true
     exec.enabled: true
     helm.timeout: 300
+    # Health check for ExternalSecret: apps use a wave −1 ExternalSecret as a
+    # pre-sync hook (e.g. tailscale operator-oauth, excalidash-secrets).
+    # Without this, ArgoCD cannot assess the hook's health and the sync hangs
+    # forever on "waiting for healthy state of external-secrets.io/ExternalSecret".
+    resource.customizations.health.external-secrets.io_ExternalSecret: |
+      hs = {}
+      if obj.status ~= nil then
+        for _, condition in ipairs(obj.status.conditions or {}) do
+          if condition.type == "Ready" then
+            if condition.status == "True" then
+              hs.status = "Healthy"
+              hs.message = condition.message
+            else
+              hs.status = "Degraded"
+              hs.message = condition.message
+            end
+          end
+        end
+      end
+      if hs.status == nil then
+        hs.status = "Progressing"
+        hs.message = "Waiting for ExternalSecret to sync"
+      end
+      return hs
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ API Server                                                               │
