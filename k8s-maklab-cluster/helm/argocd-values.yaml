@@ -13,9 +13,9 @@ controller:
   resources:
     requests:
       cpu: "500m"
-      memory: "512Mi"
-    limits:
       memory: "1Gi"
+    limits:
+      memory: "2Gi"
   pdb:
     enabled: true
     minAvailable: 1
