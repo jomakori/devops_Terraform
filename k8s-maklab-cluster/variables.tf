@@ -108,3 +108,20 @@ variable "gitops_config" {
     targetRevision     = "HEAD"
   }
 }
+
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ Tailscale Variables                                                      │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+variable "TAILSCALE_OAUTH_CLIENT_ID" {
+  description = "Tailscale OAuth client ID for the k8s operator. Set via TF_VAR_TAILSCALE_OAUTH_CLIENT_ID from Doppler."
+  type        = string
+  sensitive   = true
+}
+
+variable "TAILSCALE_OAUTH_CLIENT_SECRET" {
+  description = "Tailscale OAuth client secret for the k8s operator. Set via TF_VAR_TAILSCALE_OAUTH_CLIENT_SECRET from Doppler."
+  type        = string
+  sensitive   = true
+}
