@@ -36,6 +36,10 @@ terraform {
       source  = "hashicorp/random"
       version = ">= 3.6.0"
     }
+    tailscale = {
+      source  = "tailscale/tailscale"
+      version = ">= 0.16.0"
+    }
   }
 }
 
@@ -59,4 +63,7 @@ provider "kubernetes" {
 }
 provider "minikube" {
   kubernetes_version = var.cluster_config["kubernetes_version"]
+}
+provider "tailscale" {
+  api_key = var.TAILSCALE_API_KEY
 }
