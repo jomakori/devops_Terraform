@@ -155,3 +155,10 @@ No modules.
 | ---- | ----------- |
 | <a name="output_kubeconfig"></a> [kubeconfig](#output\_kubeconfig) | Kubeconfig for accessing the minikube cluster via Tailscale tunnel |
 <!-- END_TF_DOCS -->
+## CI connectivity
+
+This workspace targets the local k3s cluster (`jmak-lab`), exposed on the
+tailnet via the Tailscale k8s operator (`apiServerProxyConfig.mode: "true"`).
+CI runners join the tailnet (`TAILSCALE_AUTH_KEY`, Doppler devops/ci) and
+generate the kubeconfig client-side with
+`tailscale configure kubeconfig tailscale-operator.tail2354a3.ts.net`.
