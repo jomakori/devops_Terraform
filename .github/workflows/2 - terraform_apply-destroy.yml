@@ -85,6 +85,8 @@ jobs:
         uses: dopplerhq/secrets-fetch-action@main
         with:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: devops
+          doppler-config: ci
           inject-env-vars: true
 
       # Cluster connectivity: local k3s exposed on the tailnet via the
