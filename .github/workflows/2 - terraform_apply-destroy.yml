@@ -87,12 +87,29 @@ jobs:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
-      - name: Setup AWS Credentials
-        uses: aws-actions/configure-aws-credentials@main
+      # Cluster connectivity: local k3s exposed on the tailnet via the
+      # Tailscale k8s operator (apiServerProxyConfig.mode: "true").
+      # Runner joins as an ephemeral node (tag:k8s from the auth key);
+      # kubeconfig is generated client-side — v1.98+ does NOT drop a
+      # kubeconfig ConfigMap into the operator namespace.
+      - name: Connect to Tailscale (local k3s)
+        uses: tailscale/github-action@main
         with:
-          aws-region: ${{ env.DEFAULT_AWS_REGION }}
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          authkey: ${{ env.TAILSCALE_AUTH_KEY }}
+
+      - name: Configure kubectl via Tailscale apiserver proxy
+        run: |
+          tailscale configure kubeconfig ${{ env.TAILSCALE_PROXY_HOST }}
+          kubectl config current-context
+
+      # AWS / GKE auth commented out — live target is the local k3s cluster
+      # (exposed via the Tailscale k8s operator).
+      # - name: Setup AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@main
+      #   with:
+      #     aws-region: ${{ env.DEFAULT_AWS_REGION }}
+      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
       - name: Terraform Apply - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'false'
@@ -100,7 +117,7 @@ jobs:
         uses: skyfjell/terraform-ci@latest
         with:
           working_directory: ${{ env.WORKSPACE }}
-          terraform_token: ${{ env.TERRAFORM_TOKEN }}
+          terraform_token: ${{ env.TF_TOKEN_APP_TERRAFORM_IO }}
           github_token: ${{ env.GITHUB_TOKEN }}
           mode: apply
 
@@ -109,14 +126,7 @@ jobs:
         uses: dflook/terraform-destroy@main
         env:
           GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }} # from Doppler
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ env.TERRAFORM_TOKEN }}
-          TERRAFORM_PRE_RUN: |
-            command -v aws >/dev/null 2>&1 || {
-                echo >&2 "Installing awscli...";
-                curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" >/dev/null;
-                unzip awscliv2.zip >/dev/null;
-                ./aws/install;
-            }
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ env.TF_TOKEN_APP_TERRAFORM_IO }}
         with:
           workspace: ${{ env.WORKSPACE }}
           path: ${{ env.WORKSPACE }}
