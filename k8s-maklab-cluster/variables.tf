@@ -108,3 +108,14 @@ variable "gitops_config" {
     targetRevision     = "HEAD"
   }
 }
+
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ Tailscale Variables                                                      │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+variable "TAILSCALE_API_KEY" {
+  description = "Tailscale API key (api_key:write scope) — creates/manages the operator OAuth client. Set via TF_VAR_TAILSCALE_API_KEY from Doppler."
+  type        = string
+  sensitive   = true
+}
