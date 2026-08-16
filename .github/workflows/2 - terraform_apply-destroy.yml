@@ -103,6 +103,12 @@ jobs:
         run: |
           tailscale configure kubeconfig ${{ env.TAILSCALE_PROXY_HOST }}
           kubectl config current-context
+          # Terraform plan/apply runs inside a container (skyfjell action)
+          # where HOME=/github/home, mounted from $RUNNER_TEMP/_github_home.
+          # The kubernetes/helm/kubectl providers read ~/.kube/config there,
+          # so mirror the kubeconfig to make config_path resolve in-container.
+          mkdir -p "${RUNNER_TEMP}/_github_home/.kube"
+          cp "${HOME}/.kube/config" "${RUNNER_TEMP}/_github_home/.kube/config"
 
       # AWS / GKE auth commented out — live target is the local k3s cluster
       # (exposed via the Tailscale k8s operator).
