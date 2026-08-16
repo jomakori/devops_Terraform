@@ -103,7 +103,7 @@ jobs:
         run: |
           tailscale configure kubeconfig ${{ env.TAILSCALE_PROXY_HOST }}
           kubectl config current-context
-          # Terraform plan/apply runs inside a container (skyfjell action)
+          # Terraform apply/destroy runs inside a container (skyfjell action)
           # where HOME=/github/home, mounted from $RUNNER_TEMP/_github_home.
           # The kubernetes/helm/kubectl providers read ~/.kube/config there,
           # so mirror the kubeconfig to make config_path resolve in-container.
