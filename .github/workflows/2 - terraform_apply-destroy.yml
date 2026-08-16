@@ -1,29 +1,28 @@
 name: Terraform Apply/Destroy
 
 on:
-  workflow_dispatch: # manual run fallback
-  issue_comment:
+  workflow_dispatch: # manual run
 
 permissions:
   contents: read
   pull-requests: write
+  actions: read
 
 jobs:
   detect-changes:
-    name: Detect Terraform Changes
-    if: contains(github.event.comment.body, 'terraform apply') || contains(github.event.comment.body, 'terraform destroy')
+    name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.detect.outputs.changed }}
       destroy: ${{ steps.destroy.outputs.destroy }}
+      run_id: ${{ steps.find-run.outputs.run_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@main
         with:
           fetch-depth: 0
-          ref: refs/pull/${{ github.event.issue.number }}/head # to use pr branch
 
-      - name: Detect Terraform Workspace Changes
+      - name: Check - Detect Workspace Changes
         id: detect
         run: |
           # check - Only allow changes on a single workspace
@@ -60,63 +59,81 @@ jobs:
             echo "destroy=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: check - Grab Run ID
+        id: find-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=$(gh run list -w "1 - terraform_plan.yml" -b "${{ github.ref_name }}" -s success -L 1 --json databaseId -q '.[0].databaseId')
+          [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ] && { echo "No plan found"; exit 1; }
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
   terraform-apply-destroy:
-    # Workflow is triggered by previous job
-    if: contains(github.event.comment.body, 'terraform apply') || contains(github.event.comment.body, 'terraform destroy')
-    runs-on: ubuntu-latest # whitelisted
-    name: Apply Changes # Terraform Apply or Destroy, depending on destroy output
+    runs-on: ubuntu-latest
+    name: Apply Changes # Terraform Apply or Destroy
     needs: detect-changes
     env:
       WORKSPACE: ${{ needs.detect-changes.outputs.changed }}
       DESTROY: ${{ needs.detect-changes.outputs.destroy }}
-      PR_NUM: ${{ github.event.issue.number }}
     steps:
       - name: Checkout
         uses: actions/checkout@main
         with:
-          # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
-          ref: ${{ env.DESTROY == 'true' && 'main' || format('refs/pull/{0}/head', env.PR_NUM) }}
+          # Conditional, based on type of plan
+          ref: ${{ env.DESTROY == 'true' && 'main' || github.ref }}
 
-      - name: Install Doppler cli
+      - name: Setup Go
+        uses: actions/setup-go@main
+        with:
+          cache: false
+
+      - name: Setup Doppler
         uses: dopplerhq/cli-action@master
 
-      - name: Fetch Doppler Secrets
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@main
+        with:
+          terraform_version: latest
+
+      - name: Setup TF_summarize
+        run: go install github.com/jomakori/TF_summarize@apply_enhancement
+
+      - name: Doppler - Fetch Secrets
         id: doppler
         uses: dopplerhq/secrets-fetch-action@main
         with:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
-      - name: Setup AWS Credentials
-        uses: aws-actions/configure-aws-credentials@main
-        with:
-          aws-region: ${{ env.DEFAULT_AWS_REGION }}
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+      # - name: Setup AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@main
+      #   with:
+      #     aws-region: ${{ env.DEFAULT_AWS_REGION }}
+      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Terraform Apply - ${{ env.WORKSPACE }} (conditional)
-        if: env.DESTROY == 'false'
-        id: terraform-ci
-        uses: skyfjell/terraform-ci@latest
+      - name: Restore Terraform Plan
+        uses: actions/download-artifact@main
         with:
-          working_directory: ${{ env.WORKSPACE }}
-          terraform_token: ${{ env.TERRAFORM_TOKEN }}
-          github_token: ${{ env.GITHUB_TOKEN }}
-          mode: apply
-
-      - name: Terraform Destroy - ${{ env.WORKSPACE }} (conditional)
-        if: env.DESTROY == 'true'
-        uses: dflook/terraform-destroy@main
-        env:
-          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }} # from Doppler
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ env.TERRAFORM_TOKEN }}
-          TERRAFORM_PRE_RUN: |
-            command -v aws >/dev/null 2>&1 || {
-                echo >&2 "Installing awscli...";
-                curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" >/dev/null;
-                unzip awscliv2.zip >/dev/null;
-                ./aws/install;
-            }
-        with:
-          workspace: ${{ env.WORKSPACE }}
+          name: ${{ env.WORKSPACE }}-plan
           path: ${{ env.WORKSPACE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.detect-changes.outputs.run_id }}
+
+      # Needed for cloud init for state
+      - name: Terraform Init
+        run: |
+          cd ${{ env.WORKSPACE }}
+          terraform init
+
+      - name: Terraform ${{ env.DESTROY == 'true' && 'Destroy' || 'Apply' }} - ${{ env.WORKSPACE }}
+        id: apply
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TF_PHASE: apply
+          TF_OUTPUT: gha,pr
+        shell: bash
+        run: |
+          set -o pipefail
+          cd ${{ env.WORKSPACE }}
+          terraform apply -auto-approve plan.out 2>&1 | TF_summarize

@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   detect-changes:
-    name: Detect Terraform Changes
+    name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.detect.outputs.changed }}
@@ -25,9 +25,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect Terraform Workspace Changes
+      - name: Check - Detect Changes
         id: detect
-        run:  |
+        run: |
           # check - Only allow changes on a single workspace
           workspaces=$(git diff --name-only origin/main HEAD | awk -F/ '!/^\.|^\// && /\// {print $1}' | sort | uniq)
           count=$(echo "$workspaces" | wc -l)
@@ -63,11 +63,9 @@ jobs:
           fi
 
   terraform-plan:
-    # Conditional - Ensures outputs are set in previous workflow
     if: needs.detect-changes.outputs.changed != '' && needs.detect-changes.outputs.destroy != ''
-
     runs-on: ubuntu-latest
-    name: Plan Changes
+    name: Planned Changes
     needs: detect-changes
     env:
       WORKSPACE: ${{ needs.detect-changes.outputs.changed }}
@@ -77,50 +75,56 @@ jobs:
       - name: Checkout
         uses: actions/checkout@main
         with:
-          # Conditional, based on type of plan (since destroy plan needs the deleted workspace contents)
+          # Conditional, based on type of plan
           ref: ${{ (env.DESTROY == 'true' && 'main') || github.head_ref }}
 
-      - name: Install Doppler cli
+      - name: Setup Go
+        uses: actions/setup-go@v6.4.0
+        with:
+          cache: false
+
+      - name: Setup Doppler
         uses: dopplerhq/cli-action@master
 
-      - name: Fetch Doppler Secrets
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@main
+        with:
+          terraform_version: latest
+
+      - name: Setup TF_summarize
+        run: go install github.com/jomakori/TF_summarize@apply_enhancement
+
+      - name: Doppler - Fetch Secrets
         id: doppler
         uses: dopplerhq/secrets-fetch-action@main
         with:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
-      - name: Setup AWS Credentials
-        uses: aws-actions/configure-aws-credentials@main
-        with:
-          aws-region: ${{ env.DEFAULT_AWS_REGION }}
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+      - name: Terraform Validate - ${{ env.WORKSPACE }}
+        run: |
+          cd ${{ env.WORKSPACE }}
+          terraform init
+          terraform validate
 
-      - name: Terraform Plan - ${{ env.WORKSPACE }} - Apply (conditional)
-        if: env.DESTROY == 'false'
-        id: terraform-ci
-        uses: skyfjell/terraform-ci@latest
-        with:
-          working_directory: ${{ env.WORKSPACE }}
-          terraform_token: ${{ env.TERRAFORM_TOKEN }}
-          github_token: ${{ env.GITHUB_TOKEN }}
-          mode: plan
-
-      - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
-        if: env.DESTROY == 'true'
-        uses: dflook/terraform-plan@main
+      - name: Terraform Plan - ${{ env.WORKSPACE }}
+        id: plan
         env:
-          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }} 
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ env.TERRAFORM_TOKEN }}
-          TERRAFORM_PRE_RUN: |
-            command -v aws >/dev/null 2>&1 || {
-                echo >&2 "Installing awscli...";
-                curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" >/dev/null;
-                unzip awscliv2.zip >/dev/null;
-                ./aws/install;
-            }
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TF_PHASE: plan
+          TF_OUTPUT: gha
+        shell: bash
+        run: |
+          set -o pipefail
+          cd ${{ env.WORKSPACE }}
+          terraform plan -out plan.out 2>&1 | TF_summarize
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@main
         with:
-          workspace: ${{ env.WORKSPACE }}
-          path: ${{ env.WORKSPACE }} 
-          destroy: true
+          name: ${{ env.WORKSPACE }}-plan
+          path: |
+            ${{ env.WORKSPACE }}/.terraform
+            ${{ env.WORKSPACE }}/.terraform.lock.hcl
+            ${{ env.WORKSPACE }}/plan.out
+          retention-days: 7

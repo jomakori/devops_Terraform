@@ -1,0 +1,61 @@
+#cloud-config
+# Cloud-init for Tailscale installation on OCI VMs with OCI Logging integration
+
+packages:
+  - python3-oci-cli
+
+runcmd:
+  # Wait for network
+  - |
+    for i in $(seq 1 30); do
+      ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1 && break
+      sleep 2
+    done
+
+  # Create logging directory
+  - mkdir -p /var/log/tailscale
+
+  # Install Tailscale
+  - curl -fsSL https://pkgs.tailscale.com/stable/rhel/9/tailscale.repo -o /etc/yum.repos.d/tailscale.repo
+  - dnf install -y tailscale
+  - systemctl enable --now tailscaled
+
+  # Authenticate with retry (max 3 attempts) and log to OCI Logging
+  - |
+    LOG="/var/log/tailscale_install.log"
+    HOSTNAME="${hostname}"
+    
+    # Logging function that writes to both local file and OCI Logging
+    log_message() {
+      local level="$1"
+      local message="$2"
+      local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      
+      # Write to local log file
+      echo "[$timestamp] [$level] $message" >> $LOG
+      
+      # Log to OCI Logging Service using instance principal authentication
+      # The unified monitoring agent will pick up logs from /var/log/tailscale_install.log
+      # based on the linux_logdef configuration in Terraform
+    }
+    
+    log_message "INFO" "Starting Tailscale setup for $HOSTNAME"
+    
+    for attempt in 1 2 3; do
+      log_message "INFO" "Authentication attempt $attempt/3"
+      if tailscale up --auth-key "${auth_key}" --hostname "$HOSTNAME" --ssh --accept-routes --reset >> $LOG 2>&1; then
+        if tailscale status >/dev/null 2>&1; then
+          TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo 'N/A')
+          log_message "INFO" "SUCCESS: Tailscale connected - IP: $TAILSCALE_IP"
+          
+          # Copy final log to tailscale directory for unified agent pickup
+          cp $LOG /var/log/tailscale/install.log
+          exit 0
+        fi
+      fi
+      sleep 5
+    done
+    
+    log_message "ERROR" "Authentication failed after 3 attempts"
+    cp $LOG /var/log/tailscale/install.log
+    exit 1
