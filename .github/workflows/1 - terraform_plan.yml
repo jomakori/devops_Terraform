@@ -121,17 +121,28 @@ jobs:
       - name: Terraform Plan
         if: env.DESTROY == 'false'
         run: |
-          set -o pipefail
-          terraform plan -input=false -no-color -out=tfplan 2>&1 | tee /tmp/tfplan.out
-          echo "### Terraform Plan - ${{ env.WORKSPACE }}" >> "$GITHUB_STEP_SUMMARY"
-          tail -60 /tmp/tfplan.out >> "$GITHUB_STEP_SUMMARY"
+          terraform plan -input=false -no-color -out=tfplan
+          terraform show -json tfplan > tfplan.json
         working-directory: ${{ env.WORKSPACE }}
 
       - name: Terraform Plan (destroy)
         if: env.DESTROY == 'true'
         run: |
-          set -o pipefail
-          terraform plan -destroy -input=false -no-color -out=tfplan 2>&1 | tee /tmp/tfplan.out
-          echo "### Terraform Destroy Plan - ${{ env.WORKSPACE }}" >> "$GITHUB_STEP_SUMMARY"
-          tail -60 /tmp/tfplan.out >> "$GITHUB_STEP_SUMMARY"
+          terraform plan -destroy -input=false -no-color -out=tfplan
+          terraform show -json tfplan > tfplan.json
         working-directory: ${{ env.WORKSPACE }}
+
+      - name: Summarize Plan
+        if: always()
+        run: |
+          [ -f tfplan.json ] || exit 0
+          curl -fsSL https://github.com/jomakori/TF_summarize/releases/latest/download/tf-summarize -o tf-summarize
+          chmod +x tf-summarize
+          ./tf-summarize
+        working-directory: ${{ env.WORKSPACE }}
+        env:
+          TF_PLAN_JSON: tfplan.json
+          TF_WORKSPACE: ${{ env.WORKSPACE }}
+          TF_PHASE: plan
+          DESTROY: ${{ env.DESTROY }}
+          TF_OUTPUT: gha
