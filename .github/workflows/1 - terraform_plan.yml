@@ -121,14 +121,14 @@ jobs:
       - name: Terraform Plan
         if: env.DESTROY == 'false'
         run: |
-          terraform plan -input=false -no-color -out=tfplan
+          terraform plan -input=false -no-color -lock-timeout=5m -out=tfplan
           terraform show -json tfplan > tfplan.json
         working-directory: ${{ env.WORKSPACE }}
 
       - name: Terraform Plan (destroy)
         if: env.DESTROY == 'true'
         run: |
-          terraform plan -destroy -input=false -no-color -out=tfplan
+          terraform plan -destroy -input=false -no-color -lock-timeout=5m -out=tfplan
           terraform show -json tfplan > tfplan.json
         working-directory: ${{ env.WORKSPACE }}
 
