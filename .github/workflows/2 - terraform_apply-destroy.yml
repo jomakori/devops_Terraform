@@ -108,6 +108,12 @@ jobs:
       #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
       #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
+      - name: Setup Go
+        uses: actions/setup-go@v6
+
+      - name: Setup TF_summarize
+        run: go install github.com/jomakori/TF_summarize@main
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -135,9 +141,7 @@ jobs:
           FILE=/tmp/tfapply.out
           [ "$DESTROY" = "true" ] && FILE=/tmp/tfdestroy.out
           [ -s "$FILE" ] || exit 0
-          curl -fsSL https://github.com/jomakori/TF_summarize/releases/latest/download/tf-summarize -o /tmp/tf-summarize
-          chmod +x /tmp/tf-summarize
-          TF_PLAN_FILE="$FILE" /tmp/tf-summarize
+          TF_PLAN_FILE="$FILE" TF_summarize
         env:
           TF_WORKSPACE: ${{ env.WORKSPACE }}
           TF_PHASE: apply
