@@ -94,9 +94,12 @@ jobs:
 
       # Cluster connectivity: local k3s exposed on the tailnet via the
       # Tailscale k8s operator (apiServerProxyConfig.mode: "true").
-      # Runner joins as an ephemeral node (tag:k8s from the auth key);
-      # kubeconfig is generated client-side — v1.98+ does NOT drop a
-      # kubeconfig ConfigMap into the operator namespace.
+      # The runner joins as an ephemeral node (tag:k8s from the auth key)
+      # and the kubeconfig is generated client-side — v1.98+ does NOT drop
+      # a kubeconfig ConfigMap into the operator namespace.
+      # NOTE: terraform runs directly on the runner (NOT in a container) so
+      # the providers can resolve the MagicDNS name + reach the tailnet —
+      # container actions (skyfjell/dflook) are isolated from the tailnet.
       - name: Connect to Tailscale (local k3s)
         uses: tailscale/github-action@main
         with:
@@ -106,12 +109,6 @@ jobs:
         run: |
           tailscale configure kubeconfig ${{ env.TAILSCALE_PROXY_HOST }}
           kubectl config current-context
-          # Terraform plan/apply runs inside a container (skyfjell action)
-          # where HOME=/github/home, mounted from $RUNNER_TEMP/_github_home.
-          # The kubernetes/helm/kubectl providers read ~/.kube/config there,
-          # so mirror the kubeconfig to make config_path resolve in-container.
-          mkdir -p "${RUNNER_TEMP}/_github_home/.kube"
-          cp "${HOME}/.kube/config" "${RUNNER_TEMP}/_github_home/.kube/config"
 
       # AWS / GKE auth commented out — live target is the local k3s cluster
       # (exposed via the Tailscale k8s operator).
@@ -122,23 +119,27 @@ jobs:
       #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
       #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Terraform Plan - ${{ env.WORKSPACE }} - Apply (conditional)
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -input=false -no-color
+        working-directory: ${{ env.WORKSPACE }}
+
+      - name: Terraform Plan - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'false'
-        id: terraform-ci
-        uses: skyfjell/terraform-ci@latest
-        with:
-          working_directory: ${{ env.WORKSPACE }}
-          terraform_token: ${{ env.TF_TOKEN_APP_TERRAFORM_IO }}
-          github_token: ${{ env.GITHUB_TOKEN }}
-          mode: plan
+        run: |
+          set -o pipefail
+          terraform plan -input=false -no-color -out=tfplan 2>&1 | tee /tmp/tfplan.out
+          echo "### Terraform Plan - ${{ env.WORKSPACE }}" >> "$GITHUB_STEP_SUMMARY"
+          tail -60 /tmp/tfplan.out >> "$GITHUB_STEP_SUMMARY"
+        working-directory: ${{ env.WORKSPACE }}
 
       - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
         if: env.DESTROY == 'true'
-        uses: dflook/terraform-plan@main
-        env:
-          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ env.TF_TOKEN_APP_TERRAFORM_IO }}
-        with:
-          workspace: ${{ env.WORKSPACE }}
-          path: ${{ env.WORKSPACE }}
-          destroy: true
+        run: |
+          set -o pipefail
+          terraform plan -destroy -input=false -no-color -out=tfplan 2>&1 | tee /tmp/tfplan.out
+          echo "### Terraform Destroy Plan - ${{ env.WORKSPACE }}" >> "$GITHUB_STEP_SUMMARY"
+          tail -60 /tmp/tfplan.out >> "$GITHUB_STEP_SUMMARY"
+        working-directory: ${{ env.WORKSPACE }}
