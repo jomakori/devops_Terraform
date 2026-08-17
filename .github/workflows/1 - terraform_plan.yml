@@ -88,39 +88,60 @@ jobs:
         uses: dopplerhq/secrets-fetch-action@main
         with:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: devops
+          doppler-config: ci
           inject-env-vars: true
 
-      - name: Setup AWS Credentials
-        uses: aws-actions/configure-aws-credentials@main
+      # Tailnet k8s access (runner-side: container actions can't reach tailnet)
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@main
         with:
-          aws-region: ${{ env.DEFAULT_AWS_REGION }}
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          authkey: ${{ env.TAILSCALE_AUTH_KEY }}
 
-      - name: Terraform Plan - ${{ env.WORKSPACE }} - Apply (conditional)
+      - name: Configure kubectl
+        run: |
+          tailscale configure kubeconfig ${{ env.TAILSCALE_PROXY_HOST }}
+          kubectl config current-context
+
+      # AWS/GKE auth disabled — local k3s via Tailscale
+      # - name: Setup AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@main
+      #   with:
+      #     aws-region: ${{ env.DEFAULT_AWS_REGION }}
+      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+
+      - name: Setup TF_summarize
+        run: go install github.com/jomakori/TF_summarize@main
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -input=false -no-color
+        working-directory: ${{ env.WORKSPACE }}
+
+      - name: Terraform Plan
         if: env.DESTROY == 'false'
-        id: terraform-ci
-        uses: skyfjell/terraform-ci@latest
-        with:
-          working_directory: ${{ env.WORKSPACE }}
-          terraform_token: ${{ env.TERRAFORM_TOKEN }}
-          github_token: ${{ env.GITHUB_TOKEN }}
-          mode: plan
-
-      - name: Terraform Plan Destroy - ${{ env.WORKSPACE }} (conditional)
-        if: env.DESTROY == 'true'
-        uses: dflook/terraform-plan@main
         env:
-          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }} 
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ env.TERRAFORM_TOKEN }}
-          TERRAFORM_PRE_RUN: |
-            command -v aws >/dev/null 2>&1 || {
-                echo >&2 "Installing awscli...";
-                curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" >/dev/null;
-                unzip awscliv2.zip >/dev/null;
-                ./aws/install;
-            }
-        with:
-          workspace: ${{ env.WORKSPACE }}
-          path: ${{ env.WORKSPACE }} 
-          destroy: true
+          TF_WORKSPACE: ${{ env.WORKSPACE }}
+          TF_PHASE: plan
+          TF_OUTPUT: gha
+        run: |
+          set -o pipefail
+          terraform plan -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | TF_summarize
+        working-directory: ${{ env.WORKSPACE }}
+
+      - name: Terraform Plan (destroy)
+        if: env.DESTROY == 'true'
+        env:
+          TF_WORKSPACE: ${{ env.WORKSPACE }}
+          TF_PHASE: plan
+          TF_OUTPUT: gha
+        run: |
+          set -o pipefail
+          terraform plan -destroy -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | TF_summarize
+        working-directory: ${{ env.WORKSPACE }}
