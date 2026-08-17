@@ -123,29 +123,26 @@ jobs:
 
       - name: Terraform Apply
         if: env.DESTROY == 'false'
+        env:
+          TF_WORKSPACE: ${{ env.WORKSPACE }}
+          TF_PHASE: apply
+          TF_OUTPUT: gha,pr
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -o pipefail
-          terraform apply -input=false -no-color -lock-timeout=5m -auto-approve 2>&1 | tee /tmp/tfapply.out
+          terraform apply -input=false -no-color -lock-timeout=5m -auto-approve 2>&1 | TF_summarize
         working-directory: ${{ env.WORKSPACE }}
 
       - name: Terraform Destroy
         if: env.DESTROY == 'true'
-        run: |
-          set -o pipefail
-          terraform destroy -input=false -no-color -lock-timeout=5m -auto-approve 2>&1 | tee /tmp/tfdestroy.out
-        working-directory: ${{ env.WORKSPACE }}
-
-      - name: Summarize Apply/Destroy
-        if: always()
-        run: |
-          FILE=/tmp/tfapply.out
-          [ "$DESTROY" = "true" ] && FILE=/tmp/tfdestroy.out
-          [ -s "$FILE" ] || exit 0
-          TF_PLAN_FILE="$FILE" TF_summarize
         env:
           TF_WORKSPACE: ${{ env.WORKSPACE }}
           TF_PHASE: apply
-          DESTROY: ${{ env.DESTROY }}
           TF_OUTPUT: gha,pr
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -o pipefail
+          terraform destroy -input=false -no-color -lock-timeout=5m -auto-approve 2>&1 | TF_summarize
+        working-directory: ${{ env.WORKSPACE }}

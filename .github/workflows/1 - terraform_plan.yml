@@ -126,27 +126,22 @@ jobs:
 
       - name: Terraform Plan
         if: env.DESTROY == 'false'
+        env:
+          TF_WORKSPACE: ${{ env.WORKSPACE }}
+          TF_PHASE: plan
+          TF_OUTPUT: gha
         run: |
-          terraform plan -input=false -no-color -lock-timeout=5m -out=tfplan
-          terraform show -json tfplan > tfplan.json
+          set -o pipefail
+          terraform plan -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | TF_summarize
         working-directory: ${{ env.WORKSPACE }}
 
       - name: Terraform Plan (destroy)
         if: env.DESTROY == 'true'
-        run: |
-          terraform plan -destroy -input=false -no-color -lock-timeout=5m -out=tfplan
-          terraform show -json tfplan > tfplan.json
-        working-directory: ${{ env.WORKSPACE }}
-
-      - name: Summarize Plan
-        if: always()
-        run: |
-          [ -f tfplan.json ] || exit 0
-          TF_summarize
-        working-directory: ${{ env.WORKSPACE }}
         env:
-          TF_PLAN_JSON: tfplan.json
           TF_WORKSPACE: ${{ env.WORKSPACE }}
           TF_PHASE: plan
-          DESTROY: ${{ env.DESTROY }}
           TF_OUTPUT: gha
+        run: |
+          set -o pipefail
+          terraform plan -destroy -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | TF_summarize
+        working-directory: ${{ env.WORKSPACE }}
