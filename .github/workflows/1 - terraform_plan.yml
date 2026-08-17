@@ -132,7 +132,7 @@ jobs:
           TF_OUTPUT: gha
         run: |
           set -o pipefail
-          terraform plan -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | TF_summarize
+          terraform plan -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | tee /tmp/tfplan.out | TF_summarize
         working-directory: ${{ env.WORKSPACE }}
 
       - name: Terraform Plan (destroy)
@@ -143,5 +143,5 @@ jobs:
           TF_OUTPUT: gha
         run: |
           set -o pipefail
-          terraform plan -destroy -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | TF_summarize
+          terraform plan -destroy -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | tee /tmp/tfplan.out | TF_summarize
         working-directory: ${{ env.WORKSPACE }}
