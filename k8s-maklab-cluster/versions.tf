@@ -28,6 +28,10 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = ">= 2.22.0"
     }
+    github = {
+      source  = "integrations/github"
+      version = ">= 6.0.0"
+    }
     minikube = {
       source  = "scott-the-programmer/minikube"
       version = ">= 0.6.0"
@@ -57,6 +61,10 @@ provider "helm" {
 }
 provider "kubectl" {
   load_config_file = true
+}
+provider "github" {
+  # token from GITHUB_TOKEN env (injected via Doppler ci)
+  owner = "jomakori"
 }
 provider "kubernetes" {
   config_path = "~/.kube/config"
