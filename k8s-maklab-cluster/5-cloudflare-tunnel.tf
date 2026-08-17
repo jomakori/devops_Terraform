@@ -62,3 +62,27 @@ resource "cloudflare_dns_record" "wildcard_maklab" {
   ttl     = 1
   proxied = true
 }
+
+# ── R2 backups (StackGres pg-main) ─────────────────────────────────────────
+# Bucket + S3-compatible creds pushed to Doppler svc_postgres_operator for the
+# pg-main SGCluster's SGObjectStorage (weekly base + WAL archiving).
+# Creds come from TF_VAR_R2_* (Cloudflare dashboard → R2 → Manage API tokens).
+resource "cloudflare_r2_bucket" "pg_main" {
+  account_id = var.CLOUDFLARE_ACCOUNT_ID
+  name       = "stackgres-pg-main"
+  location   = "WNAM"
+}
+
+resource "doppler_secret" "r2_access_key_id" {
+  project = "devops"
+  config  = "svc_postgres_operator"
+  name    = "R2_ACCESS_KEY_ID"
+  value   = var.R2_ACCESS_KEY_ID
+}
+
+resource "doppler_secret" "r2_secret_access_key" {
+  project = "devops"
+  config  = "svc_postgres_operator"
+  name    = "R2_SECRET_ACCESS_KEY"
+  value   = var.R2_SECRET_ACCESS_KEY
+}

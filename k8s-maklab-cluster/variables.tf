@@ -119,3 +119,19 @@ variable "TAILSCALE_API_KEY" {
   type        = string
   sensitive   = true
 }
+
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ R2 Backup Variables (StackGres pg-main)                                  │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+variable "R2_ACCESS_KEY_ID" {
+  description = "Cloudflare R2 API token access key id (pg-main backups). Set via TF_VAR_R2_ACCESS_KEY_ID from Doppler."
+  type        = string
+}
+
+variable "R2_SECRET_ACCESS_KEY" {
+  description = "Cloudflare R2 API token secret (pg-main backups). Set via TF_VAR_R2_SECRET_ACCESS_KEY from Doppler."
+  type        = string
+  sensitive   = true
+}
