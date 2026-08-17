@@ -1,67 +1,72 @@
-resource "minikube_cluster" "maklab_cluster" {
-  # Cluster Configuration
-  cluster_name      = "${var.cluster_config["name"]}-cluster"
-  cni               = var.cluster_config["cni"]
-  container_runtime = var.cluster_config["container_runtime"]
-  driver            = var.cluster_config["driver"]
-  vm                = true
-
-  # Access Configuration - tailscale
-  apiserver_names = ["${var.cluster_config["name"]}.${var.TAILSCALE_HOST}"]
-
-  # Node Configuration
-  cpus      = var.cluster_config["cpus"]
-  memory    = var.cluster_config["memory"]
-  disk_size = var.cluster_config["disk_size"]
-  nodes     = tonumber(var.cluster_config["worker_nodes"])
-
-  extra_config = ["kubelet.node-labels=intent=apps"]
-
-  addons = [
-    "storage-provisioner-rancher"
-  ]
-}
+# Cluster is managed out-of-band (minikube/krunkit on the host) — Terraform
+# must NOT manage the cluster lifecycle. Keeping this resource would CREATE a
+# second minikube cluster on the next apply. See moves.tf/imports.tf/removed.tf
+# for the drift reconciliation.
+# resource "minikube_cluster" "maklab_cluster" {
+#   # Cluster Configuration
+#   cluster_name      = "${var.cluster_config["name"]}-cluster"
+#   cni               = var.cluster_config["cni"]
+#   container_runtime = var.cluster_config["container_runtime"]
+#   driver            = var.cluster_config["driver"]
+#   vm                = true
+#
+#   # Access Configuration - tailscale
+#   apiserver_names = ["${var.cluster_config["name"]}.${var.TAILSCALE_HOST}"]
+#
+#   # Node Configuration
+#   cpus      = var.cluster_config["cpus"]
+#   memory    = var.cluster_config["memory"]
+#   disk_size = var.cluster_config["disk_size"]
+#   nodes     = tonumber(var.cluster_config["worker_nodes"])
+#
+#   extra_config = ["kubelet.node-labels=intent=apps"]
+#
+#   addons = [
+#     "storage-provisioner-rancher"
+#   ]
+# }
 
 # Point local-path provisioner at macOS host filesystem (460G) instead of tmpfs (14G root).
-resource "kubectl_manifest" "local_path_config" {
-  yaml_body = <<YAML
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: local-path-config
-  namespace: local-path-storage
-data:
-  config.json: |-
-    {
-      "nodePathMap": [
-        {
-          "node": "DEFAULT_PATH_FOR_NON_LISTED_NODES",
-          "paths": ["/minikube-host/Shared/local-path-provisioner"]
-        }
-      ]
-    }
-  helperPod.yaml: |-
-    apiVersion: v1
-    kind: Pod
-    metadata:
-      name: helper-pod
-    spec:
-      containers:
-        - name: helper-pod
-          image: docker.io/busybox:stable@sha256:3fbc632167424a6d997e74f52b878d7cc478225cffac6bc977eedfe51c7f4e79
-          imagePullPolicy: IfNotPresent
-  setup: |-
-    #!/bin/sh
-    set -eu
-    mkdir -m 0777 -p "$VOL_DIR"
-  teardown: |-
-    #!/bin/sh
-    set -eu
-    rm -rf "$VOL_DIR"
-YAML
-
-  depends_on = [minikube_cluster.maklab_cluster]
-}
+# Stale: references minikube host paths + the (now commented) minikube resource.
+# resource "kubectl_manifest" "local_path_config" {
+#   yaml_body = <<YAML
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: local-path-config
+#   namespace: local-path-storage
+# data:
+#   config.json: |-
+#     {
+#       "nodePathMap": [
+#         {
+#           "node": "DEFAULT_PATH_FOR_NON_LISTED_NODES",
+#           "paths": ["/minikube-host/Shared/local-path-provisioner"]
+#         }
+#       ]
+#     }
+#   helperPod.yaml: |-
+#     apiVersion: v1
+#     kind: Pod
+#     metadata:
+#       name: helper-pod
+#     spec:
+#       containers:
+#         - name: helper-pod
+#           image: docker.io/busybox:stable@sha256:3fbc632167424a6d997e74f52b878d7cc478225cffac6bc977eedfe51c7f4e79
+#           imagePullPolicy: IfNotPresent
+#   setup: |-
+#     #!/bin/sh
+#     set -eu
+#     mkdir -m 0777 -p "$VOL_DIR"
+#   teardown: |-
+#     #!/bin/sh
+#     set -eu
+#     rm -rf "$VOL_DIR"
+# YAML
+#
+#   depends_on = [minikube_cluster.maklab_cluster]
+# }
 
 # CoreDNS settings
 
@@ -99,8 +104,6 @@ data:
         loadbalance
     }
 YAML
-
-  depends_on = [minikube_cluster.maklab_cluster]
 }
 
 ## Auto-scale CoreDNS based on load

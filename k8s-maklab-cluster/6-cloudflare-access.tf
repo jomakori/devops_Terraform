@@ -10,17 +10,47 @@ resource "cloudflare_zero_trust_access_identity_provider" "google_oauth" {
 }
 
 # Per-host Access Applications + policy using Google OAuth.
-# (Wildcard *.maklab.net app removed — live state is per-host apps only:
-#  grafana-private, onedev-private, openagent-private, + excalidash-private.)
+
+# Grafana — grafana.maklab.net
+resource "cloudflare_zero_trust_access_application" "grafana_private" {
+  account_id       = var.CLOUDFLARE_ACCOUNT_ID
+  name             = "grafana-private"
+  type             = "self_hosted"
+  session_duration = "24h"
+  domain           = "grafana.${var.gitops_config["clusterDomain"]}"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
+
+  policies = [{
+    name     = "allow-google-auth"
+    decision = "allow"
+    include  = [{ everyone = {} }]
+  }]
+}
+
+# OpenAgent — openagent.maklab.net
+resource "cloudflare_zero_trust_access_application" "openagent_private" {
+  account_id       = var.CLOUDFLARE_ACCOUNT_ID
+  name             = "openagent-private"
+  type             = "self_hosted"
+  session_duration = "24h"
+  domain           = "openagent.${var.gitops_config["clusterDomain"]}"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
+
+  policies = [{
+    name     = "allow-google-auth"
+    decision = "allow"
+    include  = [{ everyone = {} }]
+  }]
+}
 
 # ExcaliDash — draw.maklab.net
 resource "cloudflare_zero_trust_access_application" "excalidash_private" {
-  account_id         = var.CLOUDFLARE_ACCOUNT_ID
-  name               = "excalidash-private"
-  type               = "self_hosted"
-  session_duration   = "24h"
-  domain             = "draw.${var.gitops_config["clusterDomain"]}"
-  allowed_idps       = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
+  account_id       = var.CLOUDFLARE_ACCOUNT_ID
+  name             = "excalidash-private"
+  type             = "self_hosted"
+  session_duration = "24h"
+  domain           = "draw.${var.gitops_config["clusterDomain"]}"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
 
   policies = [{
     name     = "allow-google-auth"

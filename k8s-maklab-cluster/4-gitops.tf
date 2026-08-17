@@ -35,3 +35,24 @@ locals {
     ]
   ]))
 }
+
+# ── ArgoCD GitHub webhook (gke_GitOps → argocd.maklab.net) ──
+# Re-declared during drift reconciliation: the webhook is live (id 654770250)
+# and was dropped from config — without this it would be destroyed on apply.
+data "doppler_secrets" "svc_argocd" {
+  project = var.tunnel_config["doppler_project"]
+  config  = "svc_argocd"
+}
+
+resource "github_repository_webhook" "argocd" {
+  repository = "gke_GitOps"
+  events     = ["push"]
+  configuration {
+    url          = "https://argocd.maklab.net/api/webhook"
+    content_type = "json"
+    insecure_ssl = false
+    # Read the existing secret back from Doppler so it stays stable.
+    secret = data.doppler_secrets.svc_argocd.map["WEBHOOK_GITHUB_SECRET"]
+  }
+  depends_on = [helm_release.argocd]
+}
