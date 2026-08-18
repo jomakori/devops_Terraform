@@ -97,15 +97,15 @@ variable "gitops_config" {
   description = "GitOps configuration passed to ArgoCD App-of-Apps Helm values"
   type        = map(string)
   default = {
-    apps_path          = "apps/argocd-appset"
-    argoNamespace      = "argocd"
-    argoProject        = "default"
-    clusterDomain      = "maklab.net"
-    clusterServer      = "https://kubernetes.default.svc"
-    repo               = "https://github.com/jomakori/gke_GitOps.git"
-    services_path      = "services/argocd-appset"
-    storageClass       = "local-path"
-    targetRevision     = "HEAD"
+    apps_path      = "apps/argocd-appset"
+    argoNamespace  = "argocd"
+    argoProject    = "default"
+    clusterDomain  = "maklab.net"
+    clusterServer  = "https://kubernetes.default.svc"
+    repo           = "https://github.com/jomakori/gke_GitOps.git"
+    services_path  = "services/argocd-appset"
+    storageClass   = "local-path"
+    targetRevision = "HEAD"
   }
 }
 
