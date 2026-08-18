@@ -134,6 +134,11 @@ jobs:
           terraform apply -input=false -no-color -lock-timeout=5m -auto-approve 2>&1 | tee /tmp/tfapply.out | TF_summarize
         working-directory: ${{ env.WORKSPACE }}
 
+      # Raw output lands in /tmp/tfapply.out (tee), not the log — dump on failure.
+      - name: Dump apply output (failure)
+        if: failure()
+        run: tail -120 /tmp/tfapply.out || true
+
       - name: Terraform Destroy
         if: env.DESTROY == 'true'
         env:
