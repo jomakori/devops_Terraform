@@ -145,3 +145,9 @@ jobs:
           set -o pipefail
           terraform plan -destroy -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | tee /tmp/tfplan.out | TF_summarize
         working-directory: ${{ env.WORKSPACE }}
+
+      # Raw errors live in the step summary (TF_summarize consumes the stream) —
+      # dump it to the log when the plan fails so failures are debuggable.
+      - name: Dump plan summary (failure)
+        if: failure()
+        run: tail -120 "$GITHUB_STEP_SUMMARY" || true
