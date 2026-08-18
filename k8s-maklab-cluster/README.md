@@ -117,5 +117,12 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 
 | Name | Description |
 |------|-------------|
-| `kubeconfig` | Full kubeconfig with Tailscale tunnel endpoint |
-| `public_tunnel` | `https://jmak-lab.tail2354a3.ts.net:443` |
+| `kubeconfig` | Full kubeconfig for the k3d cluster with Tailscale tunnel endpoint |
+
+## CI connectivity
+
+This workspace targets the local k3s cluster (`maklab-cluster`), exposed on the
+tailnet via the Tailscale k8s operator (`apiServerProxyConfig.mode: "true"`).
+CI runners join the tailnet (`TAILSCALE_AUTH_KEY`, Doppler devops/ci) and
+generate the kubeconfig client-side with
+`tailscale configure kubeconfig tailscale-operator.tail2354a3.ts.net`.
