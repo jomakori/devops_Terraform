@@ -12,6 +12,4 @@ resource "helm_release" "argocd" {
   chart      = "argo-cd"
   repository = "https://argoproj.github.io/argo-helm"
   values     = [file("helm/argocd-values.yaml")]
-
-  depends_on = [minikube_cluster.maklab_cluster]
 }

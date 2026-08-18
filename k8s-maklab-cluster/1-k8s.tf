@@ -1,67 +1,56 @@
-resource "minikube_cluster" "maklab_cluster" {
-  # Cluster Configuration
-  cluster_name      = "${var.cluster_config["name"]}-cluster"
-  cni               = var.cluster_config["cni"]
-  container_runtime = var.cluster_config["container_runtime"]
-  driver            = var.cluster_config["driver"]
-  vm                = true
+# The k3s/k3d cluster is provisioned out-of-band (not Terraform-managed).
+# The old minikube_cluster resource was removed — keeping it here would create
+# a second cluster on the next apply. removed.tf records its state cleanup.
+# resource "minikube_cluster" "maklab_cluster" {
+#   cluster_name      = "${var.cluster_config["name"]}-cluster"
+#   cni               = var.cluster_config["cni"]
+#   container_runtime = var.cluster_config["container_runtime"]
+#   driver            = var.cluster_config["driver"]
+#   vm                = true
+#   apiserver_names   = ["${var.cluster_config["name"]}.${var.TAILSCALE_HOST}"]
+#   cpus              = var.cluster_config["cpus"]
+#   memory            = var.cluster_config["memory"]
+#   disk_size         = var.cluster_config["disk_size"]
+#   nodes             = tonumber(var.cluster_config["worker_nodes"])
+#   extra_config      = ["kubelet.node-labels=intent=apps"]
+#   addons = ["storage-provisioner-rancher"]
+# }
 
-  # Access Configuration - tailscale
-  apiserver_names = ["${var.cluster_config["name"]}.${var.TAILSCALE_HOST}"]
-
-  # Node Configuration
-  cpus      = var.cluster_config["cpus"]
-  memory    = var.cluster_config["memory"]
-  disk_size = var.cluster_config["disk_size"]
-  nodes     = tonumber(var.cluster_config["worker_nodes"])
-
-  extra_config = ["kubelet.node-labels=intent=apps"]
-
-  addons = [
-    "storage-provisioner-rancher"
-  ]
-}
-
-# Point local-path provisioner at macOS host filesystem (460G) instead of tmpfs (14G root).
-resource "kubectl_manifest" "local_path_config" {
-  yaml_body = <<YAML
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: local-path-config
-  namespace: local-path-storage
-data:
-  config.json: |-
-    {
-      "nodePathMap": [
-        {
-          "node": "DEFAULT_PATH_FOR_NON_LISTED_NODES",
-          "paths": ["/minikube-host/Shared/local-path-provisioner"]
-        }
-      ]
-    }
-  helperPod.yaml: |-
-    apiVersion: v1
-    kind: Pod
-    metadata:
-      name: helper-pod
-    spec:
-      containers:
-        - name: helper-pod
-          image: docker.io/busybox:stable@sha256:3fbc632167424a6d997e74f52b878d7cc478225cffac6bc977eedfe51c7f4e79
-          imagePullPolicy: IfNotPresent
-  setup: |-
-    #!/bin/sh
-    set -eu
-    mkdir -m 0777 -p "$VOL_DIR"
-  teardown: |-
-    #!/bin/sh
-    set -eu
-    rm -rf "$VOL_DIR"
-YAML
-
-  depends_on = [minikube_cluster.maklab_cluster]
-}
+# Stale: minikube host paths. local-path provisioner runs natively on k3d.
+# resource "kubectl_manifest" "local_path_config" {
+#   yaml_body = <<YAML
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: local-path-config
+#   namespace: local-path-storage
+# data:
+#   config.json: |-
+#     {
+#       "nodePathMap": [
+#         { "node": "DEFAULT_PATH_FOR_NON_LISTED_NODES", "paths": ["/minikube-host/Shared/local-path-provisioner"] }
+#       ]
+#     }
+#   helperPod.yaml: |-
+#     apiVersion: v1
+#     kind: Pod
+#     metadata:
+#       name: helper-pod
+#     spec:
+#       containers:
+#         - name: helper-pod
+#           image: docker.io/busybox:stable@sha256:3fbc632167424a6d997e74f52b878d7cc478225cffac6bc977eedfe51c7f4e79
+#           imagePullPolicy: IfNotPresent
+#   setup: |-
+#     #!/bin/sh
+#     set -eu
+#     mkdir -m 0777 -p "$VOL_DIR"
+#   teardown: |-
+#     #!/bin/sh
+#     set -eu
+#     rm -rf "$VOL_DIR"
+# YAML
+# }
 
 # CoreDNS settings
 
@@ -88,10 +77,6 @@ data:
            ttl 30
         }
         prometheus :9153
-        hosts {
-           192.168.64.1 host.minikube.internal
-           fallthrough
-        }
         forward . /etc/resolv.conf { max_concurrent 1000 }
         cache 30
         loop
@@ -99,8 +84,6 @@ data:
         loadbalance
     }
 YAML
-
-  depends_on = [minikube_cluster.maklab_cluster]
 }
 
 ## Auto-scale CoreDNS based on load
@@ -187,4 +170,3 @@ YAML
 
   depends_on = [kubectl_manifest.coredns_deployment]
 }
-
