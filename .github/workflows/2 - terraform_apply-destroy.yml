@@ -131,13 +131,8 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -o pipefail
-          terraform apply -input=false -no-color -lock-timeout=5m -auto-approve 2>&1 | tee /tmp/tfapply.out | TF_summarize
+          terraform apply -input=false -no-color -lock-timeout=5m -auto-approve 2>&1 | TF_summarize
         working-directory: ${{ env.WORKSPACE }}
-
-      # Raw output lands in /tmp/tfapply.out (tee), not the log — dump on failure.
-      - name: Dump apply output (failure)
-        if: failure()
-        run: tail -120 /tmp/tfapply.out || true
 
       - name: Terraform Destroy
         if: env.DESTROY == 'true'
@@ -149,5 +144,5 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -o pipefail
-          terraform destroy -input=false -no-color -lock-timeout=5m -auto-approve 2>&1 | tee /tmp/tfdestroy.out | TF_summarize
+          terraform destroy -input=false -no-color -lock-timeout=5m -auto-approve 2>&1 | TF_summarize
         working-directory: ${{ env.WORKSPACE }}
