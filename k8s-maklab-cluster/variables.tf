@@ -4,7 +4,7 @@
   └──────────────────────────────────────────────────────────────────────────┘
  */
 variable "cluster_config" {
-  description = "Cluster-wide configuration for the minikube cluster"
+  description = "Cluster-wide configuration for the k3s/k3d cluster"
   type        = map(string)
   default = {
     cni                = "flannel"
@@ -24,10 +24,6 @@ variable "cluster_config" {
   │ Doppler-passed variables                                                 │
   └──────────────────────────────────────────────────────────────────────────┘
  */
-variable "TAILSCALE_HOST" {
-  description = "URL to Tailscale Tunnel"
-}
-
 variable "DOPPLER_TOKEN" {
   description = "Used by TF provider to create service account + machine token for ESO."
   type        = string
@@ -97,15 +93,15 @@ variable "gitops_config" {
   description = "GitOps configuration passed to ArgoCD App-of-Apps Helm values"
   type        = map(string)
   default = {
-    apps_path          = "apps/argocd-appset"
-    argoNamespace      = "argocd"
-    argoProject        = "default"
-    clusterDomain      = "maklab.net"
-    clusterServer      = "https://kubernetes.default.svc"
-    repo               = "https://github.com/jomakori/gke_GitOps.git"
-    services_path      = "services/argocd-appset"
-    storageClass       = "local-path"
-    targetRevision     = "HEAD"
+    apps_path      = "apps/argocd-appset"
+    argoNamespace  = "argocd"
+    argoProject    = "default"
+    clusterDomain  = "maklab.net"
+    clusterServer  = "https://kubernetes.default.svc"
+    repo           = "https://github.com/jomakori/gke_GitOps.git"
+    services_path  = "services/argocd-appset"
+    storageClass   = "local-path"
+    targetRevision = "HEAD"
   }
 }
 
@@ -116,6 +112,12 @@ variable "gitops_config" {
  */
 variable "TAILSCALE_API_KEY" {
   description = "Tailscale API key (api_key:write scope) — creates/manages the operator OAuth client. Set via TF_VAR_TAILSCALE_API_KEY from Doppler."
+  type        = string
+  sensitive   = true
+}
+
+variable "GITHUB_TOKEN" {
+  description = "Classic PAT with admin:repo_hook — the Actions automatic token cannot manage repo webhooks (403 'not accessible by integration'). Set via TF_VAR_GITHUB_TOKEN from Doppler."
   type        = string
   sensitive   = true
 }
