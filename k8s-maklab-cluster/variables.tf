@@ -119,3 +119,9 @@ variable "TAILSCALE_API_KEY" {
   type        = string
   sensitive   = true
 }
+
+variable "GITHUB_TOKEN" {
+  description = "Classic PAT with admin:repo_hook — the Actions automatic token cannot manage repo webhooks. Set via TF_VAR_GITHUB_TOKEN from Doppler."
+  type        = string
+  sensitive   = true
+}

@@ -63,8 +63,10 @@ provider "kubectl" {
   load_config_file = true
 }
 provider "github" {
-  # token from GITHUB_TOKEN env (injected via Doppler ci)
+  # PAT (TF_VAR_GITHUB_TOKEN from Doppler) — the Actions automatic token
+  # cannot manage repo webhooks (403 "not accessible by integration").
   owner = "jomakori"
+  token = var.GITHUB_TOKEN
 }
 provider "kubernetes" {
   config_path = "~/.kube/config"
