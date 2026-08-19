@@ -9,14 +9,17 @@ variable "cluster_config" {
   default = {
     cni                = "flannel"
     container_runtime  = "containerd"
-    cpus               = "max"
-    disk_size          = "20000mb"
-    driver             = "krunkit"
-    kubernetes_version = "v1.35.1"
-    memory             = "15g"
-    name               = "jmak-lab"
-    worker_nodes       = "4"
+    driver             = "k3d"
+    kubernetes_version = "v1.35.1-k3s1"
+    name               = "maklab-cluster"
+    worker_nodes       = "3"
   }
+}
+
+variable "k3s_image" {
+  description = "Custom k3s Docker image with iscsi pre-installed for Longhorn compatibility. Defaults to GHCR image built via make k3s-image."
+  type        = string
+  default     = "ghcr.io/jomakori/k3s-iscsi:v1.35.1-k3s1"
 }
 
 /*

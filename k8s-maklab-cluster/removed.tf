@@ -26,8 +26,8 @@ removed {
   }
 }
 
-# Old minikube-era resource (k3d cluster is provisioned out-of-band).
-# Defensive — if ever re-added to state it must not be re-created.
+# Old minikube-era resources — superseded by k3d_cluster. Defensive:
+# if ever re-added to state, drop them without destroying live infra.
 removed {
   from = minikube_cluster.maklab_cluster
   lifecycle {

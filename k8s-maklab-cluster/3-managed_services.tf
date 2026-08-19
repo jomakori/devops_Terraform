@@ -12,4 +12,6 @@ resource "helm_release" "argocd" {
   chart      = "argo-cd"
   repository = "https://argoproj.github.io/argo-helm"
   values     = [file("helm/argocd-values.yaml")]
+
+  depends_on = [k3d_cluster.maklab_cluster]
 }

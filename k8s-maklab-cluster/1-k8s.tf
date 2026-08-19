@@ -1,56 +1,44 @@
-# The k3s/k3d cluster is provisioned out-of-band (not Terraform-managed).
-# The old minikube_cluster resource was removed — keeping it here would create
-# a second cluster on the next apply. removed.tf records its state cleanup.
-# resource "minikube_cluster" "maklab_cluster" {
-#   cluster_name      = "${var.cluster_config["name"]}-cluster"
-#   cni               = var.cluster_config["cni"]
-#   container_runtime = var.cluster_config["container_runtime"]
-#   driver            = var.cluster_config["driver"]
-#   vm                = true
-#   apiserver_names   = ["${var.cluster_config["name"]}.${var.TAILSCALE_HOST}"]
-#   cpus              = var.cluster_config["cpus"]
-#   memory            = var.cluster_config["memory"]
-#   disk_size         = var.cluster_config["disk_size"]
-#   nodes             = tonumber(var.cluster_config["worker_nodes"])
-#   extra_config      = ["kubelet.node-labels=intent=apps"]
-#   addons = ["storage-provisioner-rancher"]
-# }
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ k3d Cluster — 1 server + 3 agents on OrbStack (arm64)                    │
+  │ Provider: SneakyBugs/k3d v1.0.1                                          │
+  │ Image: custom k3s with iscsi pre-installed (built via make k3s-image)    │
+  │        Dockerfile at k8s-maklab-cluster/Dockerfile — open-iscsi from Alpine │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+resource "k3d_cluster" "maklab_cluster" {
+  name = var.cluster_config["name"]
 
-# Stale: minikube host paths. local-path provisioner runs natively on k3d.
-# resource "kubectl_manifest" "local_path_config" {
-#   yaml_body = <<YAML
-# apiVersion: v1
-# kind: ConfigMap
-# metadata:
-#   name: local-path-config
-#   namespace: local-path-storage
-# data:
-#   config.json: |-
-#     {
-#       "nodePathMap": [
-#         { "node": "DEFAULT_PATH_FOR_NON_LISTED_NODES", "paths": ["/minikube-host/Shared/local-path-provisioner"] }
-#       ]
-#     }
-#   helperPod.yaml: |-
-#     apiVersion: v1
-#     kind: Pod
-#     metadata:
-#       name: helper-pod
-#     spec:
-#       containers:
-#         - name: helper-pod
-#           image: docker.io/busybox:stable@sha256:3fbc632167424a6d997e74f52b878d7cc478225cffac6bc977eedfe51c7f4e79
-#           imagePullPolicy: IfNotPresent
-#   setup: |-
-#     #!/bin/sh
-#     set -eu
-#     mkdir -m 0777 -p "$VOL_DIR"
-#   teardown: |-
-#     #!/bin/sh
-#     set -eu
-#     rm -rf "$VOL_DIR"
-# YAML
-# }
+  k3d_config = <<-EOT
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: ${var.cluster_config["name"]}
+servers: 1
+agents: ${var.cluster_config["worker_nodes"]}
+image: ${var.k3s_image}
+ports:
+  - port: 6443:6443
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      - arg: --prefer-bundled-bin
+        nodeFilters:
+          - server:*
+          - agent:*
+      - arg: --node-label=intent=apps
+        nodeFilters:
+          - agent:*
+      - arg: --tls-san=${local.tunnel_host}
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+EOT
+}
 
 # CoreDNS settings
 
@@ -84,6 +72,8 @@ data:
         loadbalance
     }
 YAML
+
+  depends_on = [k3d_cluster.maklab_cluster]
 }
 
 ## Auto-scale CoreDNS based on load
