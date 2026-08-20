@@ -4,19 +4,22 @@
   └──────────────────────────────────────────────────────────────────────────┘
  */
 variable "cluster_config" {
-  description = "Cluster-wide configuration for the minikube cluster"
+  description = "Cluster-wide configuration for the k3s/k3d cluster"
   type        = map(string)
   default = {
     cni                = "flannel"
     container_runtime  = "containerd"
-    cpus               = "max"
-    disk_size          = "20000mb"
-    driver             = "krunkit"
-    kubernetes_version = "v1.35.1"
-    memory             = "15g"
-    name               = "jmak-lab"
-    worker_nodes       = "4"
+    driver             = "k3d"
+    kubernetes_version = "v1.35.1-k3s1"
+    name               = "maklab-cluster"
+    worker_nodes       = "3"
   }
+}
+
+variable "k3s_image" {
+  description = "Custom k3s Docker image with iscsi pre-installed for Longhorn compatibility. Defaults to GHCR image built via make k3s-image."
+  type        = string
+  default     = "ghcr.io/jomakori/k3s-iscsi:v1.35.1-k3s1"
 }
 
 /*
@@ -24,10 +27,6 @@ variable "cluster_config" {
   │ Doppler-passed variables                                                 │
   └──────────────────────────────────────────────────────────────────────────┘
  */
-variable "TAILSCALE_HOST" {
-  description = "URL to Tailscale Tunnel"
-}
-
 variable "DOPPLER_TOKEN" {
   description = "Used by TF provider to create service account + machine token for ESO."
   type        = string
@@ -97,15 +96,15 @@ variable "gitops_config" {
   description = "GitOps configuration passed to ArgoCD App-of-Apps Helm values"
   type        = map(string)
   default = {
-    apps_path          = "apps/argocd-appset"
-    argoNamespace      = "argocd"
-    argoProject        = "default"
-    clusterDomain      = "maklab.net"
-    clusterServer      = "https://kubernetes.default.svc"
-    repo               = "https://github.com/jomakori/gke_GitOps.git"
-    services_path      = "services/argocd-appset"
-    storageClass       = "local-path"
-    targetRevision     = "HEAD"
+    apps_path      = "apps/argocd-appset"
+    argoNamespace  = "argocd"
+    argoProject    = "default"
+    clusterDomain  = "maklab.net"
+    clusterServer  = "https://kubernetes.default.svc"
+    repo           = "https://github.com/jomakori/gke_GitOps.git"
+    services_path  = "services/argocd-appset"
+    storageClass   = "local-path"
+    targetRevision = "HEAD"
   }
 }
 
@@ -132,6 +131,12 @@ variable "R2_ACCESS_KEY_ID" {
 
 variable "R2_SECRET_ACCESS_KEY" {
   description = "Cloudflare R2 API token secret (pg-main backups). Set via TF_VAR_R2_SECRET_ACCESS_KEY from Doppler."
+  type        = string
+  sensitive   = true
+}
+
+variable "GITHUB_TOKEN" {
+  description = "Classic PAT with admin:repo_hook — the Actions automatic token cannot manage repo webhooks (403 'not accessible by integration'). Set via TF_VAR_GITHUB_TOKEN from Doppler."
   type        = string
   sensitive   = true
 }

@@ -1,66 +1,43 @@
-resource "minikube_cluster" "maklab_cluster" {
-  # Cluster Configuration
-  cluster_name      = "${var.cluster_config["name"]}-cluster"
-  cni               = var.cluster_config["cni"]
-  container_runtime = var.cluster_config["container_runtime"]
-  driver            = var.cluster_config["driver"]
-  vm                = true
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ k3d Cluster — 1 server + 3 agents on OrbStack (arm64)                    │
+  │ Provider: SneakyBugs/k3d v1.0.1                                          │
+  │ Image: custom k3s with iscsi pre-installed (built via make k3s-image)    │
+  │        Dockerfile at k8s-maklab-cluster/Dockerfile — open-iscsi from Alpine │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+resource "k3d_cluster" "maklab_cluster" {
+  name = var.cluster_config["name"]
 
-  # Access Configuration - tailscale
-  apiserver_names = ["${var.cluster_config["name"]}.${var.TAILSCALE_HOST}"]
-
-  # Node Configuration
-  cpus      = var.cluster_config["cpus"]
-  memory    = var.cluster_config["memory"]
-  disk_size = var.cluster_config["disk_size"]
-  nodes     = tonumber(var.cluster_config["worker_nodes"])
-
-  extra_config = ["kubelet.node-labels=intent=apps"]
-
-  addons = [
-    "storage-provisioner-rancher"
-  ]
-}
-
-# Point local-path provisioner at macOS host filesystem (460G) instead of tmpfs (14G root).
-resource "kubectl_manifest" "local_path_config" {
-  yaml_body = <<YAML
-apiVersion: v1
-kind: ConfigMap
+  k3d_config = <<-EOT
+apiVersion: k3d.io/v1alpha5
+kind: Simple
 metadata:
-  name: local-path-config
-  namespace: local-path-storage
-data:
-  config.json: |-
-    {
-      "nodePathMap": [
-        {
-          "node": "DEFAULT_PATH_FOR_NON_LISTED_NODES",
-          "paths": ["/minikube-host/Shared/local-path-provisioner"]
-        }
-      ]
-    }
-  helperPod.yaml: |-
-    apiVersion: v1
-    kind: Pod
-    metadata:
-      name: helper-pod
-    spec:
-      containers:
-        - name: helper-pod
-          image: docker.io/busybox:stable@sha256:3fbc632167424a6d997e74f52b878d7cc478225cffac6bc977eedfe51c7f4e79
-          imagePullPolicy: IfNotPresent
-  setup: |-
-    #!/bin/sh
-    set -eu
-    mkdir -m 0777 -p "$VOL_DIR"
-  teardown: |-
-    #!/bin/sh
-    set -eu
-    rm -rf "$VOL_DIR"
-YAML
-
-  depends_on = [minikube_cluster.maklab_cluster]
+  name: ${var.cluster_config["name"]}
+servers: 1
+agents: ${var.cluster_config["worker_nodes"]}
+image: ${var.k3s_image}
+ports:
+  - port: 6443:6443
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      - arg: --prefer-bundled-bin
+        nodeFilters:
+          - server:*
+          - agent:*
+      - arg: --node-label=intent=apps
+        nodeFilters:
+          - agent:*
+      - arg: --tls-san=${local.tunnel_host}
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+EOT
 }
 
 # CoreDNS settings
@@ -88,10 +65,6 @@ data:
            ttl 30
         }
         prometheus :9153
-        hosts {
-           192.168.64.1 host.minikube.internal
-           fallthrough
-        }
         forward . /etc/resolv.conf { max_concurrent 1000 }
         cache 30
         loop
@@ -100,7 +73,7 @@ data:
     }
 YAML
 
-  depends_on = [minikube_cluster.maklab_cluster]
+  depends_on = [k3d_cluster.maklab_cluster]
 }
 
 ## Auto-scale CoreDNS based on load
@@ -187,4 +160,3 @@ YAML
 
   depends_on = [kubectl_manifest.coredns_deployment]
 }
-

@@ -10,17 +10,16 @@ resource "cloudflare_zero_trust_access_identity_provider" "google_oauth" {
 }
 
 # Per-host Access Applications + policy using Google OAuth.
-# (Wildcard *.maklab.net app removed — live state is per-host apps only:
-#  grafana-private, onedev-private, openagent-private, + excalidash-private.)
+# Live state has per-host apps only: grafana, excalidash, openagent.
 
-# ExcaliDash — draw.maklab.net
-resource "cloudflare_zero_trust_access_application" "excalidash_private" {
-  account_id         = var.CLOUDFLARE_ACCOUNT_ID
-  name               = "excalidash-private"
-  type               = "self_hosted"
-  session_duration   = "24h"
-  domain             = "draw.${var.gitops_config["clusterDomain"]}"
-  allowed_idps       = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
+# Grafana — grafana.maklab.net
+resource "cloudflare_zero_trust_access_application" "grafana_private" {
+  account_id       = var.CLOUDFLARE_ACCOUNT_ID
+  name             = "grafana-private"
+  type             = "self_hosted"
+  session_duration = "24h"
+  domain           = "grafana.${var.gitops_config["clusterDomain"]}"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
 
   policies = [{
     name     = "allow-google-auth"
@@ -29,11 +28,57 @@ resource "cloudflare_zero_trust_access_application" "excalidash_private" {
   }]
 }
 
-# Push AUD to Doppler so the gitops appset can add it to the istio
+# OpenAgent — openagent.maklab.net
+resource "cloudflare_zero_trust_access_application" "openagent_private" {
+  account_id       = var.CLOUDFLARE_ACCOUNT_ID
+  name             = "openagent-private"
+  type             = "self_hosted"
+  session_duration = "24h"
+  domain           = "openagent.${var.gitops_config["clusterDomain"]}"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
+
+  policies = [{
+    name     = "allow-google-auth"
+    decision = "allow"
+    include  = [{ everyone = {} }]
+  }]
+}
+
+# ExcaliDash — draw.maklab.net
+resource "cloudflare_zero_trust_access_application" "excalidash_private" {
+  account_id       = var.CLOUDFLARE_ACCOUNT_ID
+  name             = "excalidash-private"
+  type             = "self_hosted"
+  session_duration = "24h"
+  domain           = "draw.${var.gitops_config["clusterDomain"]}"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
+
+  policies = [{
+    name     = "allow-google-auth"
+    decision = "allow"
+    include  = [{ everyone = {} }]
+  }]
+}
+
+# Push each app AUD to Doppler so the gitops appset adds them to the istio
 # RequestAuthentication (cf-access-jwt) audiences list.
 resource "doppler_secret" "cf_access_aud_excalidash" {
   project = var.tunnel_config["doppler_project"]
   config  = var.tunnel_config["doppler_config"]
   name    = "CF_ACCESS_AUD_EXCALIDASH"
   value   = cloudflare_zero_trust_access_application.excalidash_private.aud
+}
+
+resource "doppler_secret" "cf_access_aud_grafana" {
+  project = var.tunnel_config["doppler_project"]
+  config  = var.tunnel_config["doppler_config"]
+  name    = "CF_ACCESS_AUD_GRAFANA"
+  value   = cloudflare_zero_trust_access_application.grafana_private.aud
+}
+
+resource "doppler_secret" "cf_access_aud_openagent" {
+  project = var.tunnel_config["doppler_project"]
+  config  = var.tunnel_config["doppler_config"]
+  name    = "CF_ACCESS_AUD_OPENAGENT"
+  value   = cloudflare_zero_trust_access_application.openagent_private.aud
 }
