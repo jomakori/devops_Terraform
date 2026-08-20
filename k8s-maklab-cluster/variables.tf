@@ -119,6 +119,22 @@ variable "TAILSCALE_API_KEY" {
   sensitive   = true
 }
 
+/*
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ R2 Backup Variables (StackGres pg-main)                                  │
+  └──────────────────────────────────────────────────────────────────────────┘
+ */
+variable "R2_ACCESS_KEY_ID" {
+  description = "Cloudflare R2 API token access key id (pg-main backups). Set via TF_VAR_R2_ACCESS_KEY_ID from Doppler."
+  type        = string
+}
+
+variable "R2_SECRET_ACCESS_KEY" {
+  description = "Cloudflare R2 API token secret (pg-main backups). Set via TF_VAR_R2_SECRET_ACCESS_KEY from Doppler."
+  type        = string
+  sensitive   = true
+}
+
 variable "GITHUB_TOKEN" {
   description = "Classic PAT with admin:repo_hook — the Actions automatic token cannot manage repo webhooks (403 'not accessible by integration'). Set via TF_VAR_GITHUB_TOKEN from Doppler."
   type        = string
