@@ -8,7 +8,6 @@ metadata:
   name: external-secrets
 YAML
 
-  depends_on = [k3d_cluster.maklab_cluster]
 }
 
 resource "kubectl_manifest" "doppler_machine_token_secret" {

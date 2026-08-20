@@ -1,10 +1,7 @@
 locals {
-  cluster_name = k3d_cluster.maklab_cluster.name
+  cluster_name = var.cluster_config["name"]
   tunnel_host  = "jmak-lab.tail2354a3.ts.net"
 }
 
-output "kubeconfig" {
-  description = "Kubeconfig for accessing the k3d cluster via Tailscale tunnel"
-  sensitive   = true
-  value       = replace(k3d_cluster.maklab_cluster.kubeconfig, "/https://0\\.0\\.0\\.0:\\d+/", "https://${local.tunnel_host}:443")
-}
+# kubeconfig output removed 2026-08-20 with k3d_cluster (see 1-k8s.tf / removed.tf).
+# CI obtains cluster access at runtime via `tailscale configure kubeconfig`.

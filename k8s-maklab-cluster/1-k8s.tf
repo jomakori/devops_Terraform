@@ -6,38 +6,15 @@
   │        Dockerfile at k8s-maklab-cluster/Dockerfile — open-iscsi from Alpine │
   └──────────────────────────────────────────────────────────────────────────┘
  */
-resource "k3d_cluster" "maklab_cluster" {
-  name = var.cluster_config["name"]
-
-  k3d_config = <<-EOT
-apiVersion: k3d.io/v1alpha5
-kind: Simple
-metadata:
-  name: ${var.cluster_config["name"]}
-servers: 1
-agents: ${var.cluster_config["worker_nodes"]}
-image: ${var.k3s_image}
-ports:
-  - port: 6443:6443
-    nodeFilters:
-      - loadbalancer
-options:
-  k3s:
-    extraArgs:
-      - arg: --prefer-bundled-bin
-        nodeFilters:
-          - server:*
-          - agent:*
-      - arg: --node-label=intent=apps
-        nodeFilters:
-          - agent:*
-      - arg: --tls-san=${local.tunnel_host}
-        nodeFilters:
-          - server:*
-  kubeconfig:
-    updateDefaultKubeconfig: true
-    switchCurrentContext: true
-EOT
+# k3d_cluster.maklab_cluster — DISABLED 2026-08-20. The SneakyBugs/k3d provider
+# requires the `k3d` CLI on PATH and shells out to it on refresh; CI runners
+# lack it and cannot see the Mac's OrbStack docker anyway (cluster is created
+# out-of-band on the Mac). State entry handled by removed.tf. If you need TF to
+# manage the cluster, run terraform locally on the Mac (k3d present there).
+resource "null_resource" "k3d_cluster_managed_out_of_band" {
+  triggers = {
+    note = "k3d cluster jmak-lab is bootstrapped on the Mac (make k3s-image + k3d create); not managed from CI"
+  }
 }
 
 # CoreDNS settings
@@ -73,7 +50,6 @@ data:
     }
 YAML
 
-  depends_on = [k3d_cluster.maklab_cluster]
 }
 
 ## Auto-scale CoreDNS based on load
