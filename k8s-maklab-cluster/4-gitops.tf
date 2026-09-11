@@ -14,13 +14,13 @@ resource "kubectl_manifest" "services" {
   depends_on = [helm_release.argocd]
 }
 
-# resource "kubectl_manifest" "apps" {
-#   yaml_body = templatefile("${path.module}/argocd_app-of-apps/apps.yml",
-#     merge(local.gitops, { path = local.gitops["apps_path"] })
-#   )
-#   force_new  = true
-#   depends_on = [kubectl_manifest.services]
-# }
+resource "kubectl_manifest" "apps" {
+  yaml_body = templatefile("${path.module}/argocd_app-of-apps/apps.yml",
+    merge(local.gitops, { path = local.gitops["apps_path"] })
+  )
+  force_new  = true
+  depends_on = [kubectl_manifest.services]
+}
 
 # ── Trusted proxy IPs for OpenClaw Gateway ──
 # OpenClaw uses trusted-proxy auth (CF Access → Istio Gateway → OpenClaw).
