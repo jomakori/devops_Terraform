@@ -25,9 +25,9 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "maklab" {
         no_tls_verify     = true
         match_sni_to_host = true
       }
-    },
-    {
-      service = "http_status:404"
+      },
+      {
+        service = "http_status:404"
     }]
   }
 }
@@ -57,6 +57,18 @@ resource "doppler_secret" "tunnel_id" {
 resource "cloudflare_dns_record" "wildcard_maklab" {
   zone_id = data.cloudflare_zone.maklab.zone_id
   name    = "*.${var.gitops_config["clusterDomain"]}"
+  type    = "CNAME"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.maklab.id}.cfargotunnel.com"
+  ttl     = 1
+  proxied = true
+}
+
+# 2-level wildcard for PR previews: pr-<N>.openkite.maklab.net. Cloudflare
+# wildcard DNS is multi-level, so *.maklab.net already resolves this host; this
+# explicit record declares Terraform the owner and takes precedence over it.
+resource "cloudflare_dns_record" "wildcard_openkite" {
+  zone_id = data.cloudflare_zone.maklab.zone_id
+  name    = "*.openkite.${var.gitops_config["clusterDomain"]}"
   type    = "CNAME"
   content = "${cloudflare_zero_trust_tunnel_cloudflared.maklab.id}.cfargotunnel.com"
   ttl     = 1
