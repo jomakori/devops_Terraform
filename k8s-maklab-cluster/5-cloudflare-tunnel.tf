@@ -79,10 +79,21 @@ resource "cloudflare_dns_record" "wildcard_openkite" {
 # Bucket + S3-compatible creds pushed to Doppler svc_postgres_operator for the
 # pg-main SGCluster's SGObjectStorage (weekly base + WAL archiving).
 # Creds come from TF_VAR_R2_* (Cloudflare dashboard → R2 → Manage API tokens).
-resource "cloudflare_r2_bucket" "pg_main" {
-  account_id = var.CLOUDFLARE_ACCOUNT_ID
-  name       = "stackgres-pg-main"
-  location   = "WNAM"
+# Managed by the AWS provider against R2's S3 endpoint (see versions.tf) -
+# `cloudflare_r2_bucket` would require the R2 permission scope on an API token
+# this workspace shares with everything else, while the S3 path uses the R2
+# credentials it already has.
+# The bucket was created out-of-band on 2026-08-20, so it is imported rather
+# than created. Terraform can drop the block once it has been applied.
+# The R2 location hint (WNAM) is not expressible over the S3 API; the bucket
+# already exists with it set.
+import {
+  to = aws_s3_bucket.pg_main
+  id = "stackgres-pg-main"
+}
+
+resource "aws_s3_bucket" "pg_main" {
+  bucket = "stackgres-pg-main"
 }
 
 resource "doppler_secret" "r2_access_key_id" {
