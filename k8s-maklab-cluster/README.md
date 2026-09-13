@@ -17,9 +17,9 @@ Dependency chain (strict `depends_on`, left to right):
 
 3-managed_services.tf  ← installs ArgoCD (helm_release.argocd) — ArgoCD can't manage itself
 
-4-gitops.tf            ← creates "services" ArgoCD Application via App-of-Apps pattern
+4-gitops.tf            ← creates the "services" and "apps" ArgoCD Applications via App-of-Apps pattern
                            Points at gke_GitOps repo → ArgoCD auto-syncs (prune + self-heal)
-                           "apps" Application is commented out — ready to activate when app workloads are ready
+                           "apps" now serves the per-PR preview registration; workload apps stay disabled
 
 5-cloudflare-tunnel.tf ← Cloudflare Zero Trust tunnel + wildcard DNS + tunnel token stored to Doppler
                            Requires services (ArgoCD syncs Istio + cert-manager) already running
@@ -36,7 +36,7 @@ Dependency: `6 ← 5 ← depends_on ← 4 ← depends_on ← 3 ← depends_on �
 ├── 1-k8s.tf                  # k3d cluster provisioning + CoreDNS + Longhorn deps
 ├── 2-eso.tf                  # ESO bootstrap — namespace + token secret
 ├── 3-managed_services.tf     # ArgoCD installation
-├── 4-gitops.tf               # App-of-Apps manifests (services active, apps commented out)
+├── 4-gitops.tf               # App-of-Apps manifests (services + apps active)
 ├── 5-cloudflare-tunnel.tf    # Cloudflare tunnel + DNS + Doppler token injection
 ├── 6-cloudflare-access.tf    # CF Access Application + Google OAuth IdP
 ├── data.tf                   # Cloudflare zone data source
@@ -47,7 +47,7 @@ Dependency: `6 ← 5 ← depends_on ← 4 ← depends_on ← 3 ← depends_on �
 │   └── argocd-values.yaml    # ArgoCD Helm overrides (HA, PDB, HPA)
 └── argocd_app-of-apps/
     ├── services.yml          # Application template for services
-    └── apps.yml              # Application template for app workloads (ready but unused)
+    └── apps.yml              # Application template for the apps app-of-apps (workload + preview registration)
 ```
 
 ## Prerequisites
