@@ -8,6 +8,10 @@ terraform {
     }
   }
   required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
     cloudflare = {
       source  = "cloudflare/cloudflare"
       version = "~> 5.24"
@@ -48,6 +52,29 @@ terraform {
 }
 
 # Providers
+# R2 is S3-compatible, so the pg-main bucket is managed through the AWS
+# provider against R2's S3 endpoint rather than `cloudflare_r2_bucket`. The
+# Cloudflare-native resource requires an API token carrying the R2 permission
+# scope (a token used by everything else in this workspace); the S3 path
+# authenticates with the R2 credentials the workspace already holds (var.R2_*).
+# The three skips are required by R2 - they disable client-side S3 validation
+# that R2 cannot satisfy. Ref:
+# https://developers.cloudflare.com/r2/examples/terraform-aws/
+provider "aws" {
+  region     = "us-east-1"
+  access_key = var.R2_ACCESS_KEY_ID
+  secret_key = var.R2_SECRET_ACCESS_KEY
+
+  skip_credentials_validation = true
+  skip_region_validation      = true
+  skip_requesting_account_id  = true
+  s3_use_path_style           = true
+
+  endpoints {
+    s3 = "https://${var.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+  }
+}
+
 provider "cloudflare" {
   api_token = var.CLOUDFLARE_API_TOKEN
 }
