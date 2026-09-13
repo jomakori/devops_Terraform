@@ -25,9 +25,9 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "maklab" {
         no_tls_verify     = true
         match_sni_to_host = true
       }
-    },
-    {
-      service = "http_status:404"
+      },
+      {
+        service = "http_status:404"
     }]
   }
 }
@@ -63,14 +63,37 @@ resource "cloudflare_dns_record" "wildcard_maklab" {
   proxied = true
 }
 
+# 2-level wildcard for PR previews: pr-<N>.openkite.maklab.net. Cloudflare
+# wildcard DNS is multi-level, so *.maklab.net already resolves this host; this
+# explicit record declares Terraform the owner and takes precedence over it.
+resource "cloudflare_dns_record" "wildcard_openkite" {
+  zone_id = data.cloudflare_zone.maklab.zone_id
+  name    = "*.openkite.${var.gitops_config["clusterDomain"]}"
+  type    = "CNAME"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.maklab.id}.cfargotunnel.com"
+  ttl     = 1
+  proxied = true
+}
+
 # ── R2 backups (StackGres pg-main) ─────────────────────────────────────────
 # Bucket + S3-compatible creds pushed to Doppler svc_postgres_operator for the
 # pg-main SGCluster's SGObjectStorage (weekly base + WAL archiving).
 # Creds come from TF_VAR_R2_* (Cloudflare dashboard → R2 → Manage API tokens).
-resource "cloudflare_r2_bucket" "pg_main" {
-  account_id = var.CLOUDFLARE_ACCOUNT_ID
-  name       = "stackgres-pg-main"
-  location   = "WNAM"
+# Managed by the AWS provider against R2's S3 endpoint (see versions.tf) -
+# `cloudflare_r2_bucket` would require the R2 permission scope on an API token
+# this workspace shares with everything else, while the S3 path uses the R2
+# credentials it already has.
+# The bucket was created out-of-band on 2026-08-20, so it is imported rather
+# than created. Terraform can drop the block once it has been applied.
+# The R2 location hint (WNAM) is not expressible over the S3 API; the bucket
+# already exists with it set.
+import {
+  to = aws_s3_bucket.pg_main
+  id = "stackgres-pg-main"
+}
+
+resource "aws_s3_bucket" "pg_main" {
+  bucket = "stackgres-pg-main"
 }
 
 resource "doppler_secret" "r2_access_key_id" {
