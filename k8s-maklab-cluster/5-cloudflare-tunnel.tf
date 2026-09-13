@@ -25,9 +25,9 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "maklab" {
         no_tls_verify     = true
         match_sni_to_host = true
       }
-    },
-    {
-      service = "http_status:404"
+      },
+      {
+        service = "http_status:404"
     }]
   }
 }
@@ -67,6 +67,16 @@ resource "cloudflare_dns_record" "wildcard_maklab" {
 # Bucket + S3-compatible creds pushed to Doppler svc_postgres_operator for the
 # pg-main SGCluster's SGObjectStorage (weekly base + WAL archiving).
 # Creds come from TF_VAR_R2_* (Cloudflare dashboard → R2 → Manage API tokens).
+# The bucket already exists in R2 (created 2026-08-20, outside Terraform) but
+# is absent from this workspace's state, so a plain apply tries to CREATE it.
+# Importing adopts the existing bucket instead of recreating it. Terraform
+# drops the block from state bookkeeping automatically once applied; it can be
+# deleted then.
+import {
+  to = cloudflare_r2_bucket.pg_main
+  id = "${var.CLOUDFLARE_ACCOUNT_ID}/stackgres-pg-main"
+}
+
 resource "cloudflare_r2_bucket" "pg_main" {
   account_id = var.CLOUDFLARE_ACCOUNT_ID
   name       = "stackgres-pg-main"
