@@ -54,6 +54,40 @@ configs:
         hs.message = "Waiting for ExternalSecret to sync"
       end
       return hs
+    # Health check for CronJob: the openagent chart ships CronJob/openagent-mcp-drift,
+    # which runs every 15 min and intentionally exits non-zero when MCP drift is
+    # detected. ArgoCD's built-in CronJob health check marks that "Degraded"
+    # ("CronJob has not completed its last execution successfully") whenever
+    # lastSuccessfulTime < lastScheduleTime, which blocks auto-sync retries
+    # ("Skipping auto-sync: will not retry for revision") and needs a manual patch.
+    # This custom check keeps the drift signal visible in Job logs while reporting
+    # the CronJob Healthy, so a real drift finding does not take the whole
+    # Application's sync/health hostage.
+    resource.customizations.health.batch_CronJob: |
+      hs = {}
+      -- Suspended CronJobs do not run; surface them as Suspended.
+      if obj.spec ~= nil and obj.spec.suspend == true then
+        hs.status = "Suspended"
+        hs.message = "CronJob is suspended"
+        return hs
+      end
+      -- No status yet: the CronJob has not been scheduled.
+      if obj.status == nil or obj.status.lastScheduleTime == nil then
+        hs.status = "Healthy"
+        hs.message = "CronJob has not been scheduled yet"
+        return hs
+      end
+      -- The CronJob has been scheduled. If the last run did not succeed, report
+      -- Healthy (not Degraded, not Progressing) so ArgoCD keeps the app in sync
+      -- and keeps retrying; the drift signal stays visible in the Job's logs.
+      if obj.status.lastSuccessfulTime == nil or obj.status.lastSuccessfulTime < obj.status.lastScheduleTime then
+        hs.status = "Healthy"
+        hs.message = "Last scheduled run did not succeed — check Job logs (drift?)"
+        return hs
+      end
+      hs.status = "Healthy"
+      hs.message = "CronJob completed its last scheduled run successfully"
+      return hs
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ API Server                                                               │
