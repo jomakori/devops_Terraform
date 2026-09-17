@@ -31,6 +31,7 @@
 >   - [🧪 Run Tests](#-run-tests)
 > - [📦 Deploy Changes](#-deploy-changes)
 > - [🗂️ Featured Workspaces](#%EF%B8%8F-featured-workspaces)
+> - [🧠 CodeGraph](#-codegraph-local-code-graph-for-agents)
 
 ---
 
@@ -39,6 +40,28 @@
 This repository contains Terraform templates for automating AWS infrastructure setup using Infrastructure as Code (IaC) principles. IaC involves managing infrastructure via code files instead of manual configurations - ensuring consistency, ease of remediations and repeatability. 
 
 With Terraform, these files define AWS resources such as servers, databases, storage etc - making it easier to automate deployment and remediations. The repository is organized for easy customization and is a valuable resource to assist us with streamlining AWS infrastructure management.
+
+---
+
+## 🧠 CodeGraph (local code graph for agents)
+
+This repo is indexed with [CodeGraph](https://github.com/colbymchenry/codegraph) — a local, auto-syncing code knowledge graph that AI agents query over MCP in one call instead of grepping and reading whole files. Fully local: no service, no API key.
+
+It is wired globally for opencode (`mcp.codegraph` → `codegraph serve --mcp` in `~/.config/opencode/opencode.jsonc`, agent rule in the `CODEGRAPH_START`/`CODEGRAPH_END` block of `~/.config/opencode/AGENTS.md`). Re-wire any agent with `codegraph install --target opencode --location global --yes`.
+
+```bash
+codegraph init --yes     # build .codegraph/ (one time; auto-syncs afterwards)
+codegraph status         # index stats
+
+# prefer these over grep/find when tracing resources and variables
+codegraph explore "how is the argocd helm release applied"
+codegraph query <symbol>
+codegraph callers <symbol>
+```
+
+- `.codegraph/` is a local artifact — never commit it (gitignored here).
+- The index is **per working tree**: each `git worktree` needs its own `codegraph init`; `codegraph.json` excludes `.worktrees/` so worktree copies never bloat the parent graph.
+- `codegraph uninit` removes a project's index; `codegraph telemetry off` disables the anonymous usage stats.
 
 ---
 ## 🚀 Getting Started

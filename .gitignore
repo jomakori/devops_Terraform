@@ -14,3 +14,7 @@ venv
 sleep_clouddesktops.zip
 **run-continuation
 **.fresh/
+# CodeGraph — local code-graph index (never committed)
+.codegraph/
+# local git worktrees live inside the repo; keep them out of git status and the graph
+.worktrees/
