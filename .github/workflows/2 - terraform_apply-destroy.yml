@@ -152,7 +152,8 @@ jobs:
         env:
           TF_WORKSPACE: ${{ env.WORKSPACE }}
           TF_PHASE: apply
-          TF_OUTPUT: gha,pr
+          # Only a PR-triggered run has a PR to comment on; dispatch writes to the step summary only.
+          TF_OUTPUT: ${{ github.event_name == 'issue_comment' && 'gha,pr' || 'gha' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
         run: |
@@ -165,7 +166,8 @@ jobs:
         env:
           TF_WORKSPACE: ${{ env.WORKSPACE }}
           TF_PHASE: apply
-          TF_OUTPUT: gha,pr
+          # Only a PR-triggered run has a PR to comment on; dispatch writes to the step summary only.
+          TF_OUTPUT: ${{ github.event_name == 'issue_comment' && 'gha,pr' || 'gha' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
         run: |
