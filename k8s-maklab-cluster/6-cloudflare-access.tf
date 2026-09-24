@@ -108,10 +108,9 @@ resource "doppler_secret" "cf_access_aud_openkite" {
   value   = cloudflare_zero_trust_access_application.openkite_private.aud
 }
 
-# ── OpenKite PR previews — pr<N>.maklab.net ─────────────────────────────────
-# One wildcard app: preview hosts are generated per PR and churn, so there is
-# nothing static to enumerate. One label under the zone also keeps it free — a
-# two-level host gets no edge certificate, so it would never reach this app.
+# ── OpenKite PR previews — pr<N>-openkite.maklab.net ─────────────────────────────────
+# One wildcard app: preview hosts are generated per PR and churn. The app name is
+# in the label, so the wildcard matches only this app's previews.
 # Istio cannot mirror the wildcard (policy hosts match exact or leading `*.`), so
 # each preview carries its own exact-host DENY policy instead.
 # A wildcard never covers its parent: openkite.maklab.net has the app above.
@@ -120,7 +119,7 @@ resource "cloudflare_zero_trust_access_application" "openkite_previews_private" 
   name             = "openkite-previews-private"
   type             = "self_hosted"
   session_duration = "24h"
-  domain           = "pr*.${var.gitops_config["clusterDomain"]}"
+  domain           = "pr*-openkite.${var.gitops_config["clusterDomain"]}"
   allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
 
   policies = [{
