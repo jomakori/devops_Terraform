@@ -70,8 +70,14 @@ plan-tunnel:
 plan-access:
 	$(TF) plan \
 		-target=cloudflare_zero_trust_access_identity_provider.google_oauth \
-		-target=cloudflare_zero_trust_access_application.maklab_private \
-		-target=doppler_secret.cf_access_aud
+		-target=cloudflare_zero_trust_access_application.grafana_private \
+		-target=cloudflare_zero_trust_access_application.openagent_private \
+		-target=cloudflare_zero_trust_access_application.excalidash_private \
+		-target=cloudflare_zero_trust_access_application.openkite_previews_private \
+		-target=doppler_secret.cf_access_aud_grafana \
+		-target=doppler_secret.cf_access_aud_openagent \
+		-target=doppler_secret.cf_access_aud_excalidash \
+		-target=doppler_secret.cf_access_aud_openkite_previews
 
 # ═══ Apply — dependency order ═══
 
@@ -109,8 +115,14 @@ apply-tunnel:
 apply-access:
 	$(TF) apply -auto-approve \
 		-target=cloudflare_zero_trust_access_identity_provider.google_oauth \
-		-target=cloudflare_zero_trust_access_application.maklab_private \
-		-target=doppler_secret.cf_access_aud
+		-target=cloudflare_zero_trust_access_application.grafana_private \
+		-target=cloudflare_zero_trust_access_application.openagent_private \
+		-target=cloudflare_zero_trust_access_application.excalidash_private \
+		-target=cloudflare_zero_trust_access_application.openkite_previews_private \
+		-target=doppler_secret.cf_access_aud_grafana \
+		-target=doppler_secret.cf_access_aud_openagent \
+		-target=doppler_secret.cf_access_aud_excalidash \
+		-target=doppler_secret.cf_access_aud_openkite_previews
 
 # ═══ Destroy — reverse order ═══
 
@@ -119,8 +131,14 @@ destroy: destroy-access destroy-tunnel destroy-gitops destroy-argocd destroy-eso
 
 destroy-access:
 	$(TF) destroy -auto-approve \
-		-target=doppler_secret.cf_access_aud \
-		-target=cloudflare_zero_trust_access_application.maklab_private \
+		-target=doppler_secret.cf_access_aud_grafana \
+		-target=doppler_secret.cf_access_aud_openagent \
+		-target=doppler_secret.cf_access_aud_excalidash \
+		-target=doppler_secret.cf_access_aud_openkite_previews \
+		-target=cloudflare_zero_trust_access_application.grafana_private \
+		-target=cloudflare_zero_trust_access_application.openagent_private \
+		-target=cloudflare_zero_trust_access_application.excalidash_private \
+		-target=cloudflare_zero_trust_access_application.openkite_previews_private \
 		-target=cloudflare_zero_trust_access_identity_provider.google_oauth
 
 destroy-tunnel:
