@@ -62,11 +62,7 @@ resource "cloudflare_zero_trust_access_application" "excalidash_private" {
 }
 
 # ── OpenKite — openkite.maklab.net ───────────────────────────────────────────
-# The production console. The workload spec in gke_GitOps sets `enable_private`, so
-# the mesh already denies anything without a valid Access JWT for this exact host;
-# this application is the other half of that gate — the one that ISSUES the JWT. A
-# host missing from either layer dies at the layer it is missing from: no Cloudflare
-# challenge means no JWT, which the gateway answers with `403`.
+# The mesh half of this gate is the app spec's enable_private; this issues the JWT.
 resource "cloudflare_zero_trust_access_application" "openkite_private" {
   account_id       = var.CLOUDFLARE_ACCOUNT_ID
   name             = "openkite-private"
@@ -113,27 +109,12 @@ resource "doppler_secret" "cf_access_aud_openkite" {
 }
 
 # ── OpenKite PR previews — pr<N>.maklab.net ─────────────────────────────────
-# One wildcard app, not one app per PR: preview hostnames are generated (one per
-# open PR that published an image) and churn continuously, so there is nothing
-# static to enumerate here.
-#
-# `pr<N>.maklab.net` — the PR id IS the label, and there is no `openkite` in the
-# host. That shape is what makes this gate expressible at all: Cloudflare Access
-# allows one wildcard per label, so `pr*` matches every preview host with a single
-# application. It is also the only affordable shape — the host is one label under
-# the zone, which Universal SSL covers; a two-level host (`pr-<N>.openkite.…`)
-# gets no edge certificate at all (Total TLS skips Tunnel hostnames), so it would
-# fail the handshake before it ever reached this application.
-#
-# The second layer of the gate is Istio's DENY policy, rendered per preview by the
-# `openkite` spec in gke_GitOps/apps/helm (see its `enable_private`). It cannot be
-# a wildcard: istio matches a policy's hosts by exact value or a leading `*.`
-# SUFFIX, so `pr*.maklab.net` has no single-policy form and every preview gets one
-# exact-host policy instead. A host missing from either layer dies at the layer it
-# is missing from: no CF challenge ⇒ no JWT ⇒ `403` at the gateway.
-#
-# A wildcard never covers its parent, so this does NOT protect `openkite.maklab.net`
-# (the application above does), nor a deeper host such as `a.pr1.maklab.net`.
+# One wildcard app: preview hosts are generated per PR and churn, so there is
+# nothing static to enumerate. One label under the zone also keeps it free — a
+# two-level host gets no edge certificate, so it would never reach this app.
+# Istio cannot mirror the wildcard (policy hosts match exact or leading `*.`), so
+# each preview carries its own exact-host DENY policy instead.
+# A wildcard never covers its parent: openkite.maklab.net has the app above.
 resource "cloudflare_zero_trust_access_application" "openkite_previews_private" {
   account_id       = var.CLOUDFLARE_ACCOUNT_ID
   name             = "openkite-previews-private"
@@ -159,8 +140,7 @@ resource "cloudflare_zero_trust_access_application" "openkite_previews_private" 
 #        -p devops -c svc_cloudflare          # the list istio consumes
 #   3. doppler secrets set TF_VAR_ACCESS_AUDIENCE_TAG="<same list>" -p devops -c ci
 #   4. sync the `services` Application -> istio re-renders the
-#      RequestAuthentication with grown audiences. Both AUDs this file adds
-#      (CF_ACCESS_AUD_OPENKITE, CF_ACCESS_AUD_OPENKITE_PREVIEWS) have to be in
+#      RequestAuthentication with grown audiences. Both auds added here must be in
 #      that list, or the login succeeds and the gateway still answers `403`.
 # Until step 4 an authenticated browser still gets `403` — the login succeeds,
 # the JWT's aud is simply not accepted yet.
