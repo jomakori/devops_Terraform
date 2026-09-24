@@ -65,7 +65,9 @@ plan-tunnel:
 		-target=data.cloudflare_zero_trust_tunnel_cloudflared_token.maklab \
 		-target=doppler_secret.tunnel_token \
 		-target=doppler_secret.tunnel_id \
-		-target=cloudflare_dns_record.wildcard_maklab
+		-target=cloudflare_dns_record.wildcard_maklab \
+		-target=cloudflare_dns_record.wildcard_openkite \
+		-target=cloudflare_certificate_pack.openkite_previews
 
 plan-access:
 	$(TF) plan \
@@ -104,7 +106,9 @@ apply-tunnel:
 		-target=data.cloudflare_zero_trust_tunnel_cloudflared_token.maklab \
 		-target=doppler_secret.tunnel_token \
 		-target=doppler_secret.tunnel_id \
-		-target=cloudflare_dns_record.wildcard_maklab
+		-target=cloudflare_dns_record.wildcard_maklab \
+		-target=cloudflare_dns_record.wildcard_openkite \
+		-target=cloudflare_certificate_pack.openkite_previews
 
 apply-access:
 	$(TF) apply -auto-approve \
@@ -126,6 +130,8 @@ destroy-access:
 destroy-tunnel:
 	$(TF) destroy -auto-approve \
 		-target=cloudflare_dns_record.wildcard_maklab \
+		-target=cloudflare_dns_record.wildcard_openkite \
+		-target=cloudflare_certificate_pack.openkite_previews \
 		-target=doppler_secret.tunnel_id \
 		-target=doppler_secret.tunnel_token \
 		-target=data.cloudflare_zero_trust_tunnel_cloudflared_token.maklab \

@@ -75,6 +75,37 @@ resource "cloudflare_dns_record" "wildcard_openkite" {
   proxied = true
 }
 
+# ── Edge certificate for the preview hosts ─────────────────────────────────
+# `pr-<N>.openkite.maklab.net` is served no certificate at all today, so the TLS
+# handshake dies before Cloudflare's application layer and no Access policy can
+# ever run for a preview host (`curl https://pr-134.openkite.maklab.net` →
+# `ssl/tls alert handshake failure`, while the one-level `openagent.maklab.net`
+# answers `302` to the Access login). Two Cloudflare rules produce that:
+# Universal SSL covers the zone apex and one level of subdomain only, and Total
+# TLS does not issue certificates for hostnames served through Cloudflare Tunnel.
+# This orders the certificate that covers the preview wildcard.
+#
+# Not applied automatically: ordering an advanced certificate needs the Advanced
+# Certificate Manager add-on on the zone (a purchase made in the dashboard, not a
+# resource) and an API token carrying `SSL and Certificates: Read + Write` — the
+# current token answers `9109 Unauthorized` on the certificate_packs endpoint.
+#
+# The API requires the zone apex among the hosts, so it is listed next to the
+# preview wildcard. Cloudflare serves the most specific certificate matching a
+# hostname, so the apex and the one-level hosts keep the coverage they have.
+resource "cloudflare_certificate_pack" "openkite_previews" {
+  zone_id               = data.cloudflare_zone.maklab.zone_id
+  type                  = "advanced"
+  certificate_authority = "lets_encrypt"
+  validation_method     = "txt"
+  validity_days         = 90
+  cloudflare_branding   = false
+  hosts = [
+    var.gitops_config["clusterDomain"],
+    "*.openkite.${var.gitops_config["clusterDomain"]}",
+  ]
+}
+
 # ── R2 backups (StackGres pg-main) ─────────────────────────────────────────
 # Bucket + S3-compatible creds pushed to Doppler svc_postgres_operator for the
 # pg-main SGCluster's SGObjectStorage (weekly base + WAL archiving).
