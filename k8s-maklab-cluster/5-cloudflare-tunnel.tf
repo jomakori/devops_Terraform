@@ -63,18 +63,6 @@ resource "cloudflare_dns_record" "wildcard_maklab" {
   proxied = true
 }
 
-# 2-level wildcard for PR previews: pr-<N>.openkite.maklab.net. Cloudflare
-# wildcard DNS is multi-level, so *.maklab.net already resolves this host; this
-# explicit record declares Terraform the owner and takes precedence over it.
-resource "cloudflare_dns_record" "wildcard_openkite" {
-  zone_id = data.cloudflare_zone.maklab.zone_id
-  name    = "*.openkite.${var.gitops_config["clusterDomain"]}"
-  type    = "CNAME"
-  content = "${cloudflare_zero_trust_tunnel_cloudflared.maklab.id}.cfargotunnel.com"
-  ttl     = 1
-  proxied = true
-}
-
 # ── R2 backups (StackGres pg-main) ─────────────────────────────────────────
 # Bucket + S3-compatible creds pushed to Doppler svc_postgres_operator for the
 # pg-main SGCluster's SGObjectStorage (weekly base + WAL archiving).
