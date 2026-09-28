@@ -97,9 +97,9 @@ server:
   resources:
     requests:
       cpu: "250m"
-      memory: "256Mi"
-    limits:
       memory: "512Mi"
+    limits:
+      memory: "1Gi"
   pdb:
     enabled: true
     minAvailable: 1
@@ -150,20 +150,23 @@ applicationSet:
   resources:
     requests:
       cpu: "250m"
-      memory: "256Mi"
-    limits:
       memory: "512Mi"
+    limits:
+      memory: "1Gi"
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Redis                                                                    │
 # └──────────────────────────────────────────────────────────────────────────┘
+# Redis runs the timeseries/ReJSON/search modules and had OOMKilled 21 times at
+# the 512Mi limit (historical cgroup count; the Sept 2026 node-OOM reset its
+# containers too). 1Gi limit to match controller/repoServer's availability bump.
 redis:
   resources:
     requests:
       cpu: "250m"
-      memory: "256Mi"
-    limits:
       memory: "512Mi"
+    limits:
+      memory: "1Gi"
   pdb:
     enabled: true
     minAvailable: 1
