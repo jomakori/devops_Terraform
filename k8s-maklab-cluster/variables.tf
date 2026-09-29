@@ -23,7 +23,13 @@ variable "k3s_image" {
 }
 
 variable "orbstack_memory_mib" {
-  description = "OrbStack VM memory in MiB (32768 = 32GiB). The k3d cluster runs inside this VM; the 4 node containers advertise its full RAM as allocatable, so a 16GiB VM gets over-committed ~2:1 (recurring CoreDNS OOMs). Enforced by terraform_data.orbstack_vm_memory — effective after an OrbStack restart."
+  description = "OrbStack VM memory in MiB (53248 = 52GiB). The k3d cluster runs inside this VM; the 4 node containers advertise its full RAM as allocatable, so a 16GiB VM gets over-committed ~2:1 (recurring CoreDNS OOMs). 52GiB is the max that leaves ~12GiB on the 64GiB Mac for macOS + kernel (measured host overhead ~5GiB). Enforced by terraform_data.orbstack_vm_memory — effective after an OrbStack restart."
+  type        = number
+  default     = 53248
+}
+
+variable "orbstack_swapfile_mib" {
+  description = "Disk-backed swapfile size in MiB created inside the OrbStack VM (32768 = 32GiB on the /dev/vdb1 data disk, which has 70GiB free). Complements the VM's zram (RAM-backed compression) + 1GiB built-in swap; together they lift CommitLimit to ~75GiB so the cluster can commit far past RAM before OOM. Provisioned idempotently by terraform_data.orbstack_vm_memory — effective immediately on apply (no restart needed)."
   type        = number
   default     = 32768
 }
