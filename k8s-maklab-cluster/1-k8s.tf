@@ -17,6 +17,63 @@ resource "null_resource" "k3d_cluster_managed_out_of_band" {
   }
 }
 
+# OrbStack VM memory — the host the k3d cluster runs on. The 4 k3d node
+# containers advertise the VM's full RAM as allocatable (each ~16GB), so the
+# scheduler sees 64GB of claims over a 16GB VM and over-commits it ~2:1 — the
+# root cause of the recurring CoreDNS OOM cascade (Committed_AS 27.9GB vs
+# CommitLimit 25.7GB, MemFree ~137MB at 01:53Z flares).
+#
+# Enforced via orb config set, which lives on the Mac — the local-exec guard
+# makes this a no-op on CI runners (no `orb` binary there), and takes effect
+# only when applied from the Mac (the cluster's home). Takes effect on the next
+# OrbStack restart; raising it does NOT restart OrbStack by itself.
+#
+# Also provisions a disk-backed swapfile inside the VM so the cluster can
+# commit past RAM before OOM (zram alone is RAM-backed compression, not
+# capacity). Idempotent: skips if the swapfile already exists.
+resource "terraform_data" "orbstack_vm_memory" {
+  input = {
+    memory_mib   = var.orbstack_memory_mib
+    swapfile_mib = var.orbstack_swapfile_mib
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      if ! command -v orb >/dev/null 2>&1; then
+        echo "orb CLI not found on PATH — Skipping OrbStack VM memory/swap enforcement (expected on CI runners)"
+        exit 0
+      fi
+      current="$(orb config get memory_mib 2>/dev/null || echo unknown)"
+      echo "OrbStack VM memory: ${var.orbstack_memory_mib} MiB (was: $current) — effective after OrbStack restart"
+      orb config set memory_mib "${var.orbstack_memory_mib}"
+
+      echo "Ensuring ${var.orbstack_swapfile_mib} MiB swapfile in VM..."
+      orb run sh -c '
+        set -e
+        SUDO=""
+        if [ "$(id -u)" -ne 0 ]; then SUDO="sudo"; fi
+        if $SUDO [ -f /swapfile ]; then
+          actual=$($SUDO stat -c %s /swapfile 2>/dev/null || echo 0)
+          if [ "$actual" -ge $(( ${var.orbstack_swapfile_mib} * 1024 * 1024 )) ]; then
+            echo "/swapfile exists at ${var.orbstack_swapfile_mib} MiB or larger — OK"
+            exit 0
+          fi
+          echo "/swapfile too small ($actual bytes) — recreating"
+          $SUDO swapoff /swapfile 2>/dev/null || true
+          $SUDO rm -f /swapfile
+        fi
+        $SUDO fallocate -l ${var.orbstack_swapfile_mib}M /swapfile || $SUDO dd if=/dev/zero of=/swapfile bs=1M count=${var.orbstack_swapfile_mib} status=none
+        $SUDO chmod 600 /swapfile
+        $SUDO mkswap /swapfile >/dev/null
+        $SUDO swapon /swapfile
+        $SUDO grep -q "^/swapfile" /etc/fstab || echo "/swapfile none swap sw 0 0" | $SUDO tee -a /etc/fstab >/dev/null
+        echo "/swapfile provisioned (${var.orbstack_swapfile_mib} MiB) and active"
+      '
+    EOT
+  }
+}
+
 # CoreDNS settings
 
 ## cache cluster.local, resource bounds, node-spread, HPA, and PDB for reliable DNS
