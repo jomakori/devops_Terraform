@@ -22,6 +22,12 @@ variable "k3s_image" {
   default     = "ghcr.io/jomakori/k3s-iscsi:v1.35.1-k3s1"
 }
 
+variable "orbstack_memory_mib" {
+  description = "OrbStack VM memory in MiB (32768 = 32GiB). The k3d cluster runs inside this VM; the 4 node containers advertise its full RAM as allocatable, so a 16GiB VM gets over-committed ~2:1 (recurring CoreDNS OOMs). Enforced by terraform_data.orbstack_vm_memory — effective after an OrbStack restart."
+  type        = number
+  default     = 32768
+}
+
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ Doppler-passed variables                                                 │
