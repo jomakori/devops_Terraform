@@ -30,9 +30,16 @@ resource "null_resource" "k3d_cluster_managed_out_of_band" {
 #
 # Also provisions a disk-backed swapfile inside the VM so the cluster can
 # commit past RAM before OOM (zram alone is RAM-backed compression, not
-# capacity). Idempotent: skips if the swapfile already exists.
+# capacity). Idempotent: skips if the swapfile already exists. OrbStack boots
+# do NOT auto-swapon fstab entries, so a oneshot systemd service
+# (swapfile-swapon.service) guarantees re-activation on every restart.
 resource "terraform_data" "orbstack_vm_memory" {
-  input = {
+  # triggers_replace (NOT input): terraform_data provisioners only run on
+  # resource creation. `input` treats value changes as an in-place update and
+  # silently skips the local-exec — the swapfile/memory would drift. Any value
+  # change here = replacement = provisioner re-runs. (An ephemeral object can
+  # hold both, but keeping the trigger block single-purpose avoids surprises.)
+  triggers_replace = {
     memory_mib   = var.orbstack_memory_mib
     swapfile_mib = var.orbstack_swapfile_mib
   }
@@ -57,18 +64,52 @@ resource "terraform_data" "orbstack_vm_memory" {
           actual=$($SUDO stat -c %s /swapfile 2>/dev/null || echo 0)
           if [ "$actual" -ge $(( ${var.orbstack_swapfile_mib} * 1024 * 1024 )) ]; then
             echo "/swapfile exists at ${var.orbstack_swapfile_mib} MiB or larger — OK"
-            exit 0
+          else
+            echo "/swapfile too small ($actual bytes) — recreating"
+            $SUDO swapoff /swapfile 2>/dev/null || true
+            $SUDO rm -f /swapfile
+            $SUDO fallocate -l ${var.orbstack_swapfile_mib}M /swapfile || $SUDO dd if=/dev/zero of=/swapfile bs=1M count=${var.orbstack_swapfile_mib} status=none
+            $SUDO chmod 600 /swapfile
+            $SUDO mkswap /swapfile >/dev/null
           fi
-          echo "/swapfile too small ($actual bytes) — recreating"
-          $SUDO swapoff /swapfile 2>/dev/null || true
-          $SUDO rm -f /swapfile
+        else
+          $SUDO fallocate -l ${var.orbstack_swapfile_mib}M /swapfile || $SUDO dd if=/dev/zero of=/swapfile bs=1M count=${var.orbstack_swapfile_mib} status=none
+          $SUDO chmod 600 /swapfile
+          $SUDO mkswap /swapfile >/dev/null
+          echo "/swapfile created (${var.orbstack_swapfile_mib} MiB)"
         fi
-        $SUDO fallocate -l ${var.orbstack_swapfile_mib}M /swapfile || $SUDO dd if=/dev/zero of=/swapfile bs=1M count=${var.orbstack_swapfile_mib} status=none
-        $SUDO chmod 600 /swapfile
-        $SUDO mkswap /swapfile >/dev/null
-        $SUDO swapon /swapfile
+
+        if ! $SUDO swapon --show | grep -q "^/swapfile"; then
+          $SUDO swapon /swapfile
+          echo "/swapfile activated"
+        else
+          echo "/swapfile already active"
+        fi
         $SUDO grep -q "^/swapfile" /etc/fstab || echo "/swapfile none swap sw 0 0" | $SUDO tee -a /etc/fstab >/dev/null
-        echo "/swapfile provisioned (${var.orbstack_swapfile_mib} MiB) and active"
+
+        # OrbStack boots do NOT auto-swapon fstab entries (swap unit type
+        # unsupported in its systemd). Install a oneshot service so the
+        # swapfile survives every restart. Idempotent.
+        $SUDO tee /etc/systemd/system/swapfile-swapon.service >/dev/null <<'\''UNIT'\''
+[Unit]
+Description=Enable OrbStack VM disk-backed swapfile (/swapfile)
+After=local-fs.target
+ConditionPathExists=/swapfile
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "swapon /swapfile 2>/dev/null || true"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+        $SUDO systemctl daemon-reload
+        $SUDO systemctl enable swapfile-swapon.service >/dev/null 2>&1
+        if ! $SUDO systemctl is-active --quiet swapfile-swapon.service; then
+          $SUDO systemctl start swapfile-swapon.service
+        fi
+        echo "swapfile boot-service ensured: swapfile-swapon.service ($($SUDO systemctl is-active swapfile-swapon.service))"
       '
     EOT
   }
