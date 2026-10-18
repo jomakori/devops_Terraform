@@ -78,8 +78,31 @@ resource "cloudflare_zero_trust_access_application" "openkite_private" {
   }]
 }
 
+# OpenDesign — design.maklab.net
+resource "cloudflare_zero_trust_access_application" "design_private" {
+  account_id       = var.CLOUDFLARE_ACCOUNT_ID
+  name             = "design-private"
+  type             = "self_hosted"
+  session_duration = "24h"
+  domain           = "design.${var.gitops_config["clusterDomain"]}"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google_oauth.id]
+
+  policies = [{
+    name     = "allow-google-auth"
+    decision = "allow"
+    include  = [{ everyone = {} }]
+  }]
+}
+
 # Push each app AUD to Doppler so the gitops appset adds them to the istio
 # RequestAuthentication (cf-access-jwt) audiences list.
+resource "doppler_secret" "cf_access_aud_design" {
+  project = var.tunnel_config["doppler_project"]
+  config  = var.tunnel_config["doppler_config"]
+  name    = "CF_ACCESS_AUD_DESIGN"
+  value   = cloudflare_zero_trust_access_application.design_private.aud
+}
+
 resource "doppler_secret" "cf_access_aud_excalidash" {
   project = var.tunnel_config["doppler_project"]
   config  = var.tunnel_config["doppler_config"]
