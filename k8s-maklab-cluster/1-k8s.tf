@@ -2,8 +2,7 @@
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ k3d Cluster — 1 server + 3 agents on OrbStack (arm64)                    │
   │ Provider: SneakyBugs/k3d v1.0.1                                          │
-  │ Image: custom k3s with iscsi pre-installed (built via make k3s-image)    │
-  │        Dockerfile at k8s-maklab-cluster/Dockerfile — open-iscsi from Alpine │
+  │ Image: ghcr.io/jomakori/k3s-iscsi (custom k3s + open-iscsi, prebuilt)    │
   └──────────────────────────────────────────────────────────────────────────┘
  */
 # k3d_cluster.maklab_cluster — DISABLED 2026-08-20. The SneakyBugs/k3d provider
@@ -13,7 +12,7 @@
 # manage the cluster, run terraform locally on the Mac (k3d present there).
 resource "null_resource" "k3d_cluster_managed_out_of_band" {
   triggers = {
-    note = "k3d cluster jmak-lab is bootstrapped on the Mac (make k3s-image + k3d create); not managed from CI"
+    note = "k3d cluster jmak-lab is bootstrapped on the Mac (k3d create --image ghcr.io/jomakori/k3s-iscsi); not managed from CI"
   }
 }
 
