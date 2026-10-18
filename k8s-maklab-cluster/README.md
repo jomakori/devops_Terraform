@@ -24,10 +24,15 @@ Dependency chain (strict `depends_on`, left to right):
 5-cloudflare-tunnel.tf ← Cloudflare Zero Trust tunnel + wildcard DNS + tunnel token stored to Doppler
                            Requires services (ArgoCD syncs Istio + cert-manager) already running
 
-6-cloudflare-access.tf ← CF Access Application (Google OAuth) + Doppler AUD secret
+6-cloudflare-idp.tf     ← Google OAuth identity provider for CF Access
+                           (per-host Access apps are GitOps/Crossplane-managed)
 ```
 
 Dependency: `6 ← 5 ← depends_on ← 4 ← depends_on ← 3 ← depends_on ← 2 ← depends_on ← 1`
+
+Cloudflare Access applications are **not** managed here. A service declares
+`gateways.enable_private: true` in the GitOps repo and Crossplane creates the
+Access app from it; the account identity provider stays in `6-cloudflare-idp.tf`.
 
 ### Structure
 
@@ -38,7 +43,7 @@ Dependency: `6 ← 5 ← depends_on ← 4 ← depends_on ← 3 ← depends_on �
 ├── 3-managed_services.tf     # ArgoCD installation
 ├── 4-gitops.tf               # App-of-Apps manifests (services + apps active)
 ├── 5-cloudflare-tunnel.tf    # Cloudflare tunnel + DNS + Doppler token injection
-├── 6-cloudflare-access.tf    # CF Access Application + Google OAuth IdP
+├── 6-cloudflare-idp.tf       # Google OAuth IdP for CF Access
 ├── data.tf                   # Cloudflare zone data source
 ├── variables.tf              # cluster_config, gitops_config, tunnel_config, secrets
 ├── outputs.tf                # Kubeconfig (tunnel endpoint) + public_tunnel
