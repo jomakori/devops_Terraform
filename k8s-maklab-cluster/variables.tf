@@ -68,15 +68,9 @@ variable "tunnel_config" {
 
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │ Cloudflare Zero Trust Access Variables                                  │
+  │ Cloudflare Zero Trust (account IdP + Istio JWT validation)              │
   └──────────────────────────────────────────────────────────────────────────┘
- */
-variable "CF_TEAM" {
-  description = "Cloudflare Zero Trust team name (subdomain in cloudflareaccess.com). Set via TF_VAR_CF_TEAM."
-  type        = string
-  default     = "jmaklab"
-}
-
+*/
 variable "GOOGLE_OAUTH_CLIENT_ID" {
   description = "Google OAuth 2.0 client ID for CF Access IdP. Set via TF_VAR_GOOGLE_OAUTH_CLIENT_ID from Doppler."
   type        = string
@@ -94,7 +88,7 @@ variable "ACCESS_TEAM_DOMAIN" {
 }
 
 variable "ACCESS_AUDIENCE_TAG" {
-  description = "CF Access application AUD tag. Set via TF_VAR_ACCESS_AUDIENCE_TAG from Doppler."
+  description = "Comma-separated CF Access AUDs the istio RequestAuthentication accepts (Doppler devops/ci). Passed to the ArgoCD appset; not derived here."
   type        = string
   sensitive   = true
 }
