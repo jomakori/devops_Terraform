@@ -69,11 +69,6 @@ variable "ACCESS_TEAM_DOMAIN" {
   type        = string
 }
 
-variable "ACCESS_AUDIENCE_TAG" {
-  description = "Comma-separated CF Access AUDs the istio RequestAuthentication accepts (Doppler devops/ci). Passed to the ArgoCD appset; not derived here."
-  type        = string
-  sensitive   = true
-}
 
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐

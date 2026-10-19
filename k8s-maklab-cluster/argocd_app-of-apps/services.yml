@@ -33,8 +33,6 @@ spec:
           value: ${targetRevision}
         - name: accessTeamDomain
           value: ${accessTeamDomain}
-        - name: accessAudienceTag
-          value: ${accessAudienceTag}
   destination:
     server: ${clusterServer}
   syncPolicy:
