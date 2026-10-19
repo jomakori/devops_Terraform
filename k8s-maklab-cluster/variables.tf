@@ -45,16 +45,7 @@ variable "DOPPLER_TOKEN" {
   sensitive   = true
 }
 
-variable "CLOUDFLARE_API_TOKEN" {
-  description = "Cloudflare API token with DNS and Zero Trust permissions."
-  type        = string
-  sensitive   = true
-}
 
-variable "CLOUDFLARE_ACCOUNT_ID" {
-  description = "Cloudflare account ID for Zero Trust tunnel creation."
-  type        = string
-}
 
 variable "tunnel_config" {
   description = "Cloudflare tunnel configuration"
@@ -71,16 +62,7 @@ variable "tunnel_config" {
   │ Cloudflare Zero Trust (account IdP + Istio JWT validation)              │
   └──────────────────────────────────────────────────────────────────────────┘
 */
-variable "GOOGLE_OAUTH_CLIENT_ID" {
-  description = "Google OAuth 2.0 client ID for CF Access IdP. Set via TF_VAR_GOOGLE_OAUTH_CLIENT_ID from Doppler."
-  type        = string
-}
 
-variable "GOOGLE_OAUTH_CLIENT_SECRET" {
-  description = "Google OAuth 2.0 client secret for CF Access IdP. Set via TF_VAR_GOOGLE_OAUTH_CLIENT_SECRET from Doppler."
-  type        = string
-  sensitive   = true
-}
 
 variable "ACCESS_TEAM_DOMAIN" {
   description = "Cloudflare Zero Trust team domain. Set via TF_VAR_ACCESS_TEAM_DOMAIN from Doppler."
@@ -130,16 +112,7 @@ variable "TAILSCALE_API_KEY" {
   │ R2 Backup Variables (StackGres pg-main)                                  │
   └──────────────────────────────────────────────────────────────────────────┘
  */
-variable "R2_ACCESS_KEY_ID" {
-  description = "Cloudflare R2 API token access key id (pg-main backups). Set via TF_VAR_R2_ACCESS_KEY_ID from Doppler."
-  type        = string
-}
 
-variable "R2_SECRET_ACCESS_KEY" {
-  description = "Cloudflare R2 API token secret (pg-main backups). Set via TF_VAR_R2_SECRET_ACCESS_KEY from Doppler."
-  type        = string
-  sensitive   = true
-}
 
 variable "GITHUB_TOKEN" {
   description = "Classic PAT with admin:repo_hook — the Actions automatic token cannot manage repo webhooks (403 'not accessible by integration'). Set via TF_VAR_GITHUB_TOKEN from Doppler."
