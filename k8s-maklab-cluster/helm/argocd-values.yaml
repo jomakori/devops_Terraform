@@ -94,12 +94,17 @@ configs:
 # └──────────────────────────────────────────────────────────────────────────┘
 server:
   replicas: 2
+  # Verified 7d max working set: 110MiB (115,056,640 B). Limit 384Mi = 3.5x.
+  # The request is HPA-keyed (targetMemoryUtilizationPercentage: 70 below), so
+  # it cannot be pushed to its floor: 256Mi keeps the 70% target at 179Mi, above
+  # the verified peak, so the HPA still rests at minReplicas instead of pinning
+  # maxReplicas: 4 forever.
   resources:
     requests:
       cpu: "250m"
-      memory: "512Mi"
+      memory: "256Mi"
     limits:
-      memory: "1Gi"
+      memory: "384Mi"
   pdb:
     enabled: true
     minAvailable: 1
@@ -123,12 +128,18 @@ server:
 # └──────────────────────────────────────────────────────────────────────────┘
 repoServer:
   replicas: 2
+  # Verified 7d max working set: 355MiB (372,682,752 B) — 2Gi was a 5.8x ceiling.
+  # 768Mi is 2.2x. The 512Mi request is deliberately NOT lowered even though it
+  # is 1.4x the peak: with targetMemoryUtilizationPercentage: 70 the HPA target
+  # sits at 358Mi, i.e. right on the verified peak, and any lower request would
+  # make the HPA pin maxReplicas: 4 permanently — costing more memory than the
+  # request saves.
   resources:
     requests:
       cpu: "500m"
       memory: "512Mi"
     limits:
-      memory: "2Gi"
+      memory: "768Mi"
   pdb:
     enabled: true
     minAvailable: 1
@@ -147,12 +158,15 @@ applicationSet:
   pdb:
     enabled: true
     minAvailable: 1
+  # Verified 7d max working set: 105MiB (110,243,840 B). No HPA on this
+  # controller, so the request is free to track reality: 192Mi is 1.8x the peak,
+  # 256Mi limit 2.4x.
   resources:
     requests:
       cpu: "250m"
-      memory: "512Mi"
+      memory: "192Mi"
     limits:
-      memory: "1Gi"
+      memory: "256Mi"
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Redis                                                                    │
@@ -160,13 +174,17 @@ applicationSet:
 # Redis runs the timeseries/ReJSON/search modules and had OOMKilled 21 times at
 # the 512Mi limit (historical cgroup count; the Sept 2026 node-OOM reset its
 # containers too). 1Gi limit to match controller/repoServer's availability bump.
+# The 21 historical OOMKills above were node-level (the Sept 2026 node OOM reset
+# these containers), not redis exceeding its 512Mi cgroup: the verified 7d max
+# working set is 33.7MiB (35,389,440 B). 256Mi still gives 7.6x headroom for the
+# timeseries/ReJSON modules, and 64Mi request covers the verified peak twice over.
 redis:
   resources:
     requests:
       cpu: "250m"
-      memory: "512Mi"
+      memory: "64Mi"
     limits:
-      memory: "1Gi"
+      memory: "256Mi"
   pdb:
     enabled: true
     minAvailable: 1
@@ -192,9 +210,11 @@ notifications:
   pdb:
     enabled: true
     minAvailable: 1
+  # Verified 7d max working set: 75.5MiB (79,171,584 B). Request already tracks
+  # it (128Mi = 1.7x); the limit was 3.4x and drops to 192Mi (2.5x).
   resources:
     requests:
       cpu: "100m"
       memory: "128Mi"
     limits:
-      memory: "256Mi"
+      memory: "192Mi"
