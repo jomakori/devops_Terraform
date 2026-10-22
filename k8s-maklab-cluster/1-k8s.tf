@@ -138,8 +138,7 @@ data:
            fallthrough in-addr.arpa ip6.arpa
            ttl 30
         }
-        # k3s-managed host entries (host.k3d.internal, node names) live in the
-        # NodeHosts key of this same ConfigMap.
+        # k3s host entries (host.k3d.internal) from the NodeHosts key
         hosts /etc/coredns/NodeHosts {
            ttl 60
            reload 15s
@@ -147,10 +146,7 @@ data:
         }
         prometheus :9153
         import /etc/coredns/custom/*.override
-        # health_check: the default probe is ". IN NS", which OrbStack's DNS
-        # never answers. After any transient upstream failure CoreDNS marked
-        # the only upstream down and re-probed it 2x/s forever (~1.8M "DNS
-        # query failed name=. type=NS" lines in vmgr.log). Probe a real zone.
+        # OrbStack DNS never answers the default ". NS" probe; check a real zone
         forward . /etc/resolv.conf {
            max_concurrent 1000
            health_check 5s domain google.com
@@ -165,9 +161,7 @@ YAML
 
 }
 
-## Stop k3s from re-applying its bundled coredns.yaml on every server start,
-## which silently reverts the Corefile above to the k3s default.
-## Mac-only (docker + the k3d server container); a no-op on CI runners.
+## Stop k3s reverting the Corefile on restart (Mac-only; no-op on CI)
 resource "terraform_data" "k3s_skip_bundled_coredns" {
   provisioner "local-exec" {
     command = <<-EOT
