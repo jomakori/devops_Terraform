@@ -138,15 +138,43 @@ data:
            fallthrough in-addr.arpa ip6.arpa
            ttl 30
         }
+        # k3s host entries (host.k3d.internal) from the NodeHosts key
+        hosts /etc/coredns/NodeHosts {
+           ttl 60
+           reload 15s
+           fallthrough
+        }
         prometheus :9153
-        forward . /etc/resolv.conf { max_concurrent 1000 }
+        import /etc/coredns/custom/*.override
+        # OrbStack DNS never answers the default ". NS" probe; check a real zone
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+           health_check 5s domain google.com
+        }
         cache 30
         loop
         reload
         loadbalance
     }
+    import /etc/coredns/custom/*.server
 YAML
 
+}
+
+## Stop k3s reverting the Corefile on restart (Mac-only; no-op on CI)
+resource "terraform_data" "k3s_skip_bundled_coredns" {
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      node="k3d-maklab-cluster-server-0"
+      if ! command -v docker >/dev/null 2>&1 || ! docker inspect "$node" >/dev/null 2>&1; then
+        echo "$node not reachable via docker — Skipping k3s coredns.yaml.skip (expected on CI runners)"
+        exit 0
+      fi
+      docker exec "$node" touch /var/lib/rancher/k3s/server/manifests/coredns.yaml.skip
+      echo "k3s bundled coredns manifest disabled on $node"
+    EOT
+  }
 }
 
 ## Auto-scale CoreDNS based on load
