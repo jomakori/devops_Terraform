@@ -138,15 +138,49 @@ data:
            fallthrough in-addr.arpa ip6.arpa
            ttl 30
         }
+        # k3s-managed host entries (host.k3d.internal, node names) live in the
+        # NodeHosts key of this same ConfigMap.
+        hosts /etc/coredns/NodeHosts {
+           ttl 60
+           reload 15s
+           fallthrough
+        }
         prometheus :9153
-        forward . /etc/resolv.conf { max_concurrent 1000 }
+        import /etc/coredns/custom/*.override
+        # health_check: the default probe is ". IN NS", which OrbStack's DNS
+        # never answers. After any transient upstream failure CoreDNS marked
+        # the only upstream down and re-probed it 2x/s forever (~1.8M "DNS
+        # query failed name=. type=NS" lines in vmgr.log). Probe a real zone.
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+           health_check 5s domain google.com
+        }
         cache 30
         loop
         reload
         loadbalance
     }
+    import /etc/coredns/custom/*.server
 YAML
 
+}
+
+## Stop k3s from re-applying its bundled coredns.yaml on every server start,
+## which silently reverts the Corefile above to the k3s default.
+## Mac-only (docker + the k3d server container); a no-op on CI runners.
+resource "terraform_data" "k3s_skip_bundled_coredns" {
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      node="k3d-maklab-cluster-server-0"
+      if ! command -v docker >/dev/null 2>&1 || ! docker inspect "$node" >/dev/null 2>&1; then
+        echo "$node not reachable via docker — Skipping k3s coredns.yaml.skip (expected on CI runners)"
+        exit 0
+      fi
+      docker exec "$node" touch /var/lib/rancher/k3s/server/manifests/coredns.yaml.skip
+      echo "k3s bundled coredns manifest disabled on $node"
+    EOT
+  }
 }
 
 ## Auto-scale CoreDNS based on load
