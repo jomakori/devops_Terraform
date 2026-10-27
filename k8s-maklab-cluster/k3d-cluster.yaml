@@ -1,0 +1,49 @@
+# k3d bootstrap for the maklab cluster.
+#
+# Terraform no longer owns this cluster: the SneakyBugs/k3d provider shells out
+# to the k3d CLI, and CI runners cannot see the Mac's OrbStack daemon. The
+# cluster is created on the Mac from this file:
+#
+#   k3d cluster create --config k8s-maklab-cluster/k3d-cluster.yaml
+#
+# Keep every k3s flag the cluster depends on here. Node containers are
+# disposable — their writable layers, including /etc/rancher/k3s/config.yaml,
+# are lost on replacement, so a flag that only exists inside a running node is
+# not part of the cluster definition.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: maklab-cluster
+servers: 1
+agents: 3
+image: ghcr.io/jomakori/k3s-iscsi:v1.35.1-k3s1
+ports:
+  - port: 6443:6443
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      # The custom image ships its own iscsi binaries; stay on the bundled ones.
+      - arg: --prefer-bundled-bin
+        nodeFilters:
+          - server:*
+          - agent:*
+      # Workload placement label consumed by app nodeSelectors.
+      - arg: --node-label=intent=apps
+        nodeFilters:
+          - agent:*
+      - arg: --tls-san=jmak-lab.tail2354a3.ts.net
+        nodeFilters:
+          - server:*
+      # The Metrics API is owned by the GitOps chart
+      # (gke_GitOps services/helm/metrics-server). k3s's packaged addon
+      # registers the same Deployment name and the same
+      # v1beta1.metrics.k8s.io APIService, so with both enabled the two
+      # controllers overwrite each other and the APIService flaps.
+      - arg: --disable=metrics-server
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
