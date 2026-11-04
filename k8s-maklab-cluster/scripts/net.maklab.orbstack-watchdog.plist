@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>net.maklab.orbstack-watchdog</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/maklab/.local/bin/orbstack-watchdog.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>60</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardErrorPath</key>
+  <string>/Users/maklab/Library/Logs/orbstack-watchdog.err</string>
+</dict>
+</plist>

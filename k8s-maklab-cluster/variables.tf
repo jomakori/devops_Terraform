@@ -4,22 +4,11 @@
   └──────────────────────────────────────────────────────────────────────────┘
  */
 variable "cluster_config" {
-  description = "Cluster-wide configuration for the k3s/k3d cluster"
+  description = "Cluster name consumed by the GitOps Helm values and outputs. The rest of the cluster shape (k3s image, node counts, k3s flags) lives in k3d-cluster.yaml, which is the source of truth."
   type        = map(string)
   default = {
-    cni                = "flannel"
-    container_runtime  = "containerd"
-    driver             = "k3d"
-    kubernetes_version = "v1.35.1-k3s1"
-    name               = "maklab-cluster"
-    worker_nodes       = "3"
+    name = "maklab-cluster"
   }
-}
-
-variable "k3s_image" {
-  description = "Custom k3s Docker image with iscsi pre-installed for Longhorn compatibility. Defaults to GHCR image built via make k3s-image."
-  type        = string
-  default     = "ghcr.io/jomakori/k3s-iscsi:v1.35.1-k3s1"
 }
 
 variable "orbstack_memory_mib" {

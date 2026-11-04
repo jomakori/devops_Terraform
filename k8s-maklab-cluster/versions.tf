@@ -20,10 +20,6 @@ terraform {
       source  = "hashicorp/helm"
       version = ">= 2.17.0"
     }
-    k3d = {
-      source  = "SneakyBugs/k3d"
-      version = "1.0.1"
-    }
     kubectl = {
       source  = "gavinbunney/kubectl"
       version = ">= 1.19.0"
@@ -54,7 +50,6 @@ provider "github" {
   owner = "jomakori"
   token = var.GITHUB_TOKEN
 }
-provider "k3d" {}
 provider "helm" {
   kubernetes = {
     config_path = "~/.kube/config"

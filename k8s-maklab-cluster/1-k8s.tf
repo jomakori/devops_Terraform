@@ -1,20 +1,13 @@
 /*
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ k3d Cluster — 1 server + 3 agents on OrbStack (arm64)                    │
-  │ Provider: SneakyBugs/k3d v1.0.1                                          │
-  │ Image: ghcr.io/jomakori/k3s-iscsi (custom k3s + open-iscsi, prebuilt)    │
+  │ Definition: k3d-cluster.yaml (created on the Mac, not by Terraform)      │
   └──────────────────────────────────────────────────────────────────────────┘
  */
-# k3d_cluster.maklab_cluster — DISABLED 2026-08-20. The SneakyBugs/k3d provider
-# requires the `k3d` CLI on PATH and shells out to it on refresh; CI runners
-# lack it and cannot see the Mac's OrbStack docker anyway (cluster is created
-# out-of-band on the Mac). State entry handled by removed.tf. If you need TF to
-# manage the cluster, run terraform locally on the Mac (k3d present there).
-resource "null_resource" "k3d_cluster_managed_out_of_band" {
-  triggers = {
-    note = "k3d cluster jmak-lab is bootstrapped on the Mac (k3d create --image ghcr.io/jomakori/k3s-iscsi); not managed from CI"
-  }
-}
+# The cluster is NOT managed here. The SneakyBugs/k3d provider shells out to the
+# k3d CLI on refresh, and CI runners neither have it nor can reach the Mac's
+# OrbStack docker. k3d-cluster.yaml is the source of truth; create the cluster
+# on the Mac with `k3d cluster create --config k8s-maklab-cluster/k3d-cluster.yaml`.
 
 # OrbStack VM memory — the host the k3d cluster runs on. The 4 k3d node
 # containers advertise the VM's full RAM as allocatable (each ~16GB), so the
